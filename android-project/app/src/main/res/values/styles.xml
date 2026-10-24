@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.AuraMusicPlayer" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:statusBarColor">#07090e</item>
+        <item name="android:navigationBarColor">#07090e</item>
+        <item name="android:windowBackground">#07090e</item>
+    </style>
+</resources>

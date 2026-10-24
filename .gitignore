@@ -1,0 +1,77 @@
+# ==========================================
+# Aura Local MP3 Player — .gitignore
+# ==========================================
+
+# --- Operating System Files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- Python Cache & Virtual Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# --- Node / Web Build Artifacts (if adding packages later) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+.cache/
+.parcel-cache/
+
+# --- Environment Variables & Secrets ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==========================================
+# Android Studio & Gradle
+# ==========================================
+
+# Built binaries & APK outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+android-project/*/build/
+android-project/build/
+android-project/app/build/
+android-project/captures/
+
+# Gradle cache & temporary files
+android-project/.gradle/
+android-project/.idea/
+android-project/*.iml
+android-project/*/*.iml
+
+# Local SDK and device specific configuration (Crucial: never commit local.properties)
+android-project/local.properties
+
+# Signing keys and production certificates (Crucial: keep private)
+*.jks
+*.keystore
+signing.properties
+
+# Android Profiler & Native builds
+android-project/.externalNativeBuild/
+android-project/.cxx/
+
+# General IDE files
+.vscode/
+*.swp
+*~

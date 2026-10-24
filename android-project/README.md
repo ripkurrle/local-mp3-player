@@ -6,15 +6,18 @@ This directory contains a complete, ready-to-build native **Android Studio Proje
 
 ## 📱 Option 1: Build APK with Android Studio (Recommended)
 
+### Steps to Build:
 1. Open **Android Studio**.
-2. Select **Open an Existing Project** and choose the `android-project/` folder.
-3. Let Gradle sync dependencies.
+2. Select **Open an Existing Project** and make sure to select the **`android-project/`** folder (NOT the parent folder).
+3. Wait for the initial Gradle sync to finish (watch the bottom status bar: "Gradle sync in progress...").
 4. Go to **Build** → **Build Bundle(s) / APK(s)** → **Build APK(s)**.
-5. Once compiled, Android Studio will present a notification: **`locate`** your `app-debug.apk`.
-6. Transfer this `.apk` to your Android device via USB, Drive, or WhatsApp, and tap **Install**!
+5. Once compiled, click **`locate`** in the bottom-right popup to find your `app-debug.apk`.
 
-> **How it works:**
-> The native wrapper uses an optimized Android `WebView` that loads all assets directly from `file:///android_asset/index.html`. It requests native audio storage permissions (`READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE`) and hooks `<input type="file">` directly into Android's native file picker (`DocumentsProvider`).
+### ⚠️ If "Build APK" is Greyed Out:
+1. **Wrong Folder Opened**: Ensure you opened `local-mp3-player/android-project/`, not `local-mp3-player/`. The root folder opened in Android Studio must contain `settings.gradle`.
+2. **Trigger Gradle Sync**: Click **File** → **Sync Project with Gradle Files** (or the Elephant icon with blue arrow in the top toolbar). Android Studio will not allow building until the sync succeeds.
+3. **Check the Build/Sync Tool Window**: Open the **"Build"** tab at the bottom to see if Gradle reported any missing SDKs. If prompted with *"Install missing platform(s) and sync project"*, click the link.
+4. **Select 'app' Configuration**: Ensure the dropdown next to the Green Run button in the top toolbar says **`app`**, not *"Edit Configurations"*.
 
 ---
 

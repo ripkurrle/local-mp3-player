@@ -1,7 +1,11 @@
 <resources>
     <style name="Theme.AuraMusicPlayer" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:statusBarColor">#07090e</item>
-        <item name="android:navigationBarColor">#07090e</item>
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">#07090e</item>
     </style>
 </resources>

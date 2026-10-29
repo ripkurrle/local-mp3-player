@@ -10,7 +10,7 @@ class AudioEngine {
   constructor() {
     this.audio = new Audio();
     this.audio.preload = 'metadata';
-    this.audio.crossOrigin = 'anonymous';
+    this.currentBlobUrl = null;
 
     this.ctx = null;
     this.sourceNode = null;
@@ -81,6 +81,7 @@ class AudioEngine {
 
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
       this.ctx = new AudioCtx();
 
       this.sourceNode = this.ctx.createMediaElementSource(this.audio);
@@ -120,21 +121,84 @@ class AudioEngine {
       this.isInitialized = true;
     } catch (e) {
       console.warn('Web Audio API not supported or restricted:', e);
+      this.sourceNode = null;
+      this.analyser = null;
     }
   }
 
-  resumeContext() {
+  async resumeContext() {
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      try {
+        await this.ctx.resume();
+      } catch (e) {
+        console.warn('AudioContext resume failed:', e);
+      }
     }
+  }
+
+  /**
+   * Robust fetcher that converts relative/asset URLs into in-memory Blobs.
+   * Uses modern fetch() with XMLHttpRequest fallback for Android WebView file:/// protocols.
+   */
+  async fetchAudioBlob(url) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.blob();
+      }
+    } catch (e) {
+      console.warn('fetch() failed, attempting XHR fallback for audio blob:', e);
+    }
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'blob';
+      xhr.onload = () => {
+        if (xhr.status === 200 || (xhr.status === 0 && xhr.response)) {
+          resolve(xhr.response);
+        } else {
+          reject(new Error(`XHR error status: ${xhr.status}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('XHR network error loading audio'));
+      xhr.send();
+    });
   }
 
   async loadTrack(track) {
     this.currentTrack = track;
-    let url = track.url;
 
-    if (!url && track.fileBlob) {
-      url = URL.createObjectURL(track.fileBlob);
+    // Revoke previous blob URL to prevent memory leaks
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+    }
+
+    let url = null;
+
+    // 1. If track already has an in-memory File or Blob, use it!
+    if (track.fileBlob) {
+      this.currentBlobUrl = URL.createObjectURL(track.fileBlob);
+      url = this.currentBlobUrl;
+    } 
+    // 2. If track has a URL (e.g. sample tracks), fetch into a Blob for local playback
+    else if (track.url) {
+      try {
+        const blob = await this.fetchAudioBlob(track.url);
+        if (blob) {
+          track.fileBlob = blob;
+          this.currentBlobUrl = URL.createObjectURL(blob);
+          url = this.currentBlobUrl;
+          // Persist blob to IndexedDB
+          if (window.auraDB && track.id) {
+            auraDB.saveTrack(track).catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.warn('Could not convert track URL to blob, falling back to direct URL:', err);
+        url = track.url;
+      }
     }
 
     if (!url) {
@@ -142,23 +206,80 @@ class AudioEngine {
     }
 
     this.audio.src = url;
-    return new Promise((resolve) => {
-      const onLoaded = () => {
+    this.audio.load();
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const cleanUp = () => {
         this.audio.removeEventListener('loadedmetadata', onLoaded);
-        resolve(this.audio.duration);
+        this.audio.removeEventListener('canplay', onLoaded);
+        this.audio.removeEventListener('error', onError);
+        if (timeoutId) clearTimeout(timeoutId);
       };
+
+      const onLoaded = () => {
+        if (!settled) {
+          settled = true;
+          cleanUp();
+          resolve(this.audio.duration || 0);
+        }
+      };
+
+      const onError = (e) => {
+        if (!settled) {
+          settled = true;
+          cleanUp();
+          console.warn('Audio element error during load:', e);
+          reject(new Error('Audio load error'));
+        }
+      };
+
+      // Ensure promise always resolves within 2 seconds even if metadata event is delayed
+      const timeoutId = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          cleanUp();
+          resolve(this.audio.duration || 0);
+        }
+      }, 2000);
+
       this.audio.addEventListener('loadedmetadata', onLoaded);
+      this.audio.addEventListener('canplay', onLoaded);
+      this.audio.addEventListener('error', onError);
     });
   }
 
-  play() {
+  async play() {
     this.initWebAudio();
-    this.resumeContext();
+    await this.resumeContext();
     return this.audio.play();
   }
 
   pause() {
     this.audio.pause();
+  }
+
+  unload() {
+    this.pause();
+    this.audio.removeAttribute('src');
+    this.audio.load();
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+    }
+    this.currentTrack = null;
+
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    if (this.visualizerCanvas && this.visualizerCtx) {
+      this.visualizerCtx.clearRect(0, 0, this.visualizerCanvas.width, this.visualizerCanvas.height);
+    }
+
+    if (this.onStateChange) this.onStateChange(false);
+    if (this.onTimeUpdate) this.onTimeUpdate(0, 0);
   }
 
   seek(seconds) {

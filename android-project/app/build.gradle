@@ -1,16 +1,18 @@
 plugins {
     id 'com.android.application'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
 }
 
 android {
-    namespace 'com.aura.musicplayer'
-    compileSdk 34
+    namespace 'com.aura.musicplayerlocal'
+    compileSdk 36
 
     defaultConfig {
-        applicationId "com.aura.musicplayer"
+        applicationId "com.aura.musicplayerlocal"
         minSdk 24
-        targetSdk 34
-        versionCode 1
+        targetSdk 36
+        versionCode 3
         versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -32,4 +34,11 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.webkit:webkit:1.10.0'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+
+    // Firebase BoM & Crashlytics
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-crashlytics'
+    implementation 'com.google.firebase:firebase-analytics'
 }
+

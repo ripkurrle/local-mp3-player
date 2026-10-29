@@ -67,6 +67,10 @@ android-project/local.properties
 *.keystore
 signing.properties
 
+# Google Services / Firebase Credentials (Crucial: keep private)
+google-services.json
+**/google-services.json
+
 # Android Profiler & Native builds
 android-project/.externalNativeBuild/
 android-project/.cxx/

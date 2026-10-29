@@ -52,13 +52,17 @@ class ID3Parser {
         }
       }
 
-      // 3. If track has cover picture blob, create Object URL
-      if (defaultMeta.picture && defaultMeta.picture.data) {
+      // 3. If track has cover picture blob, convert to permanent Data URL
+      if (defaultMeta.picture && defaultMeta.picture.data && defaultMeta.picture.data.byteLength > 64) {
         try {
-          const blob = new Blob([defaultMeta.picture.data], { type: defaultMeta.picture.format });
-          defaultMeta.pictureUrl = URL.createObjectURL(blob);
+          const mime = defaultMeta.picture.format || 'image/jpeg';
+          const blob = new Blob([defaultMeta.picture.data], { type: mime });
+          const dataUrl = await ID3Parser.blobToDataUrl(blob);
+          if (dataUrl) {
+            defaultMeta.pictureUrl = dataUrl;
+          }
         } catch (e) {
-          console.warn('Could not create Object URL for picture:', e);
+          console.warn('Could not create Data URL for picture:', e);
         }
       }
 
@@ -74,6 +78,21 @@ class ID3Parser {
     }
 
     return defaultMeta;
+  }
+
+  static blobToDataUrl(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string' && reader.result.startsWith('data:image')) {
+          resolve(reader.result);
+        } else {
+          resolve(null);
+        }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
   }
 
   static readSlice(file, start, end) {

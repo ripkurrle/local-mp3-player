@@ -73,187 +73,47 @@ html, body {
   position: fixed;
 }
 
-/* Device Simulator Wrapper (Centers phone on desktop, edge-to-edge on mobile) */
+/* Edge-to-Edge Fullscreen Viewport */
 .device-viewport {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 50% 30%, #161c2d 0%, #07090e 100%);
+  background: var(--bg-primary);
   position: relative;
   overflow: hidden;
 }
 
-/* Background Ambient Lighting Glows */
-.ambient-glow-1 {
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(0, 242, 254, 0.12) 0%, transparent 70%);
-  top: -100px;
-  left: 10%;
-  pointer-events: none;
-  filter: blur(80px);
-  z-index: 1;
-}
-
-.ambient-glow-2 {
-  position: absolute;
-  width: 550px;
-  height: 550px;
-  background: radial-gradient(circle, rgba(155, 81, 224, 0.14) 0%, transparent 70%);
-  bottom: -50px;
-  right: 10%;
-  pointer-events: none;
-  filter: blur(80px);
-  z-index: 1;
-}
-
-/* Phone Frame (Mockup Frame) */
+/* App Main Shell - 100% Native Edge-to-Edge Screen */
 .mobile-shell {
-  width: 100%;
-  height: 100%;
-  max-width: var(--phone-width);
-  max-height: var(--phone-height);
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
   background: var(--bg-primary);
   position: relative;
-  border-radius: 44px;
-  box-shadow: 0 0 0 10px #1a2233, 0 25px 65px rgba(0, 0, 0, 0.85), 0 0 60px rgba(0, 242, 254, 0.15);
+  border-radius: 0 !important;
+  box-shadow: none !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 10;
-  transition: max-width 0.35s ease, max-height 0.35s ease, border-radius 0.35s ease, box-shadow 0.35s ease;
 }
 
-/* Fullscreen Mode (When user switches or on actual mobile) */
-.device-viewport.fullscreen-mode .mobile-shell {
-  max-width: 100vw;
-  max-height: 100vh;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-@media (max-width: 480px) {
-  .mobile-shell {
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-  }
-}
-
-/* Top Phone Hardware Elements */
-.mobile-notch-island {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 110px;
-  height: 28px;
-  background: #000;
-  border-radius: 20px;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  transition: width 0.3s var(--transition-bounce), height 0.3s ease;
-}
-
-.island-camera {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #111;
-  border: 1.5px solid #283044;
-}
-
-.island-audio-indicator {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-  height: 12px;
-}
-
-.island-audio-indicator span {
-  width: 2.5px;
-  height: 6px;
-  background: var(--cyan-bright);
-  border-radius: 2px;
-  animation: soundBars 1s ease-in-out infinite alternate;
-}
-
-.island-audio-indicator span:nth-child(2) { animation-delay: 0.2s; height: 11px; }
-.island-audio-indicator span:nth-child(3) { animation-delay: 0.4s; height: 8px; }
-
-@keyframes soundBars {
-  0% { transform: scaleY(0.4); }
-  100% { transform: scaleY(1.2); }
-}
-
-/* Status Bar */
-.mobile-status-bar {
-  height: 44px;
-  padding: 10px 20px 0 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  color: #e2e8f0;
-  z-index: 50;
-}
-
-.status-bar-icons {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-}
-
-/* Frame Desktop Controls bar */
+/* Ensure mock notch, fake status bar, and desktop toggle buttons are never displayed */
+.mobile-notch-island,
+.mobile-status-bar,
 .desktop-controls-bar {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  display: flex;
-  gap: 10px;
-  z-index: 120;
-}
-
-.desktop-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  color: #cad5e8;
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-family: var(--font-main);
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  backdrop-filter: blur(12px);
-  transition: all var(--transition-fast);
-}
-
-.desktop-btn:hover {
-  background: var(--bg-card-hover);
-  color: #fff;
-  border-color: var(--cyan-bright);
-  box-shadow: 0 0 12px var(--cyan-glow);
+  display: none !important;
 }
 
 /* ==========================================================================
    App Header & Toolbar
    ========================================================================== */
 .app-header {
-  padding: 8px 18px 12px 18px;
+  padding: max(14px, env(safe-area-inset-top, 14px)) 18px 12px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -421,7 +281,7 @@ html, body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px 18px 160px 18px; /* Padding for mini player & nav */
+  padding: 4px 18px calc(var(--nav-height) + var(--mini-player-height) + env(safe-area-inset-bottom, 0px) + 24px) 18px;
   position: relative;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
@@ -761,12 +621,27 @@ html, body {
   height: 17px;
 }
 
-.track-menu-btn {
+.track-menu-btn,
+.track-del-btn {
   background: none;
   border: none;
-  color: #64748b;
+  color: #4b5870;
   cursor: pointer;
   padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast), transform var(--transition-bounce);
+}
+
+.track-del-btn:hover {
+  color: #ff6b6b;
+  transform: scale(1.15);
+}
+
+.track-del-btn svg {
+  width: 15px;
+  height: 15px;
 }
 
 /* ==========================================================================
@@ -1129,7 +1004,7 @@ html, body {
    ========================================================================== */
 .mini-player-container {
   position: absolute;
-  bottom: var(--nav-height);
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
   left: 12px;
   right: 12px;
   height: var(--mini-player-height);
@@ -1289,7 +1164,7 @@ html, body {
   transform: translateY(100%);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
-  padding: 14px 20px 24px 20px;
+  padding: max(16px, env(safe-area-inset-top, 16px)) 20px max(24px, env(safe-area-inset-bottom, 24px)) 20px;
 }
 
 .player-sheet-modal.open {
@@ -1505,8 +1380,10 @@ html, body {
 .scrubber-container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin: 10px 0 16px 0;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .scrub-bar {
@@ -1516,6 +1393,23 @@ html, body {
   background: rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-full);
   cursor: pointer;
+  touch-action: none;
+  transition: height 0.15s ease;
+}
+
+/* Expanded invisible touch hit target for comfortable thumb sliding on phones */
+.scrub-bar::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  bottom: -14px;
+  left: 0;
+  right: 0;
+}
+
+.scrub-bar:hover,
+.scrub-bar.is-scrubbing {
+  height: 8px;
 }
 
 .scrub-progress {
@@ -1529,20 +1423,23 @@ html, body {
 
 .scrub-thumb {
   position: absolute;
-  right: -7px;
+  right: -8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #fff;
   border: 2px solid var(--cyan-bright);
   box-shadow: 0 0 10px var(--cyan-bright);
-  transition: transform 0.15s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  pointer-events: none;
 }
 
-.scrub-bar:hover .scrub-thumb {
-  transform: translateY(-50%) scale(1.25);
+.scrub-bar:hover .scrub-thumb,
+.scrub-bar.is-scrubbing .scrub-thumb {
+  transform: translateY(-50%) scale(1.35);
+  box-shadow: 0 0 16px var(--cyan-bright), 0 0 25px rgba(0, 242, 254, 0.7);
 }
 
 .time-row {
@@ -1659,15 +1556,15 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--nav-height);
-  background: rgba(12, 16, 25, 0.94);
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+  padding: 0 10px env(safe-area-inset-bottom, 0px) 10px;
+  background: rgba(12, 16, 25, 0.96);
   border-top: 1px solid var(--border-subtle);
   backdrop-filter: blur(20px);
   display: flex;
   justify-content: space-around;
   align-items: center;
   z-index: 55;
-  padding: 0 10px;
 }
 
 .nav-item-btn {
@@ -1847,4 +1744,507 @@ html, body {
 .toast-notice.visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* Image Fallback Protection */
+img {
+  object-fit: cover;
+}
+
+.track-artwork-thumb img,
+.album-cover-box img,
+.mini-thumb-spinning img,
+.vinyl-center-art img,
+.notif-bar-thumb img {
+  background: linear-gradient(135deg, #182239 0%, #0d121f 100%);
+  display: block;
+}
+
+/* ==========================================================================
+   Loop Mode Controls & Modal Styles
+   ========================================================================== */
+.loop-indicator-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 6px 0 10px;
+}
+
+.loop-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  color: var(--cyan-bright);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.loop-badge-btn:hover {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: var(--cyan-bright);
+  transform: translateY(-1px);
+}
+
+.loop-badge-btn:active {
+  transform: scale(0.96);
+}
+
+.loop-badge-chevron {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Loop Mode Selector Modal */
+.loop-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.loop-opt-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.loop-opt-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 242, 254, 0.3);
+  transform: translateX(2px);
+}
+
+.loop-opt-card.active {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: var(--cyan-bright);
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.18);
+}
+
+.loop-opt-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.loop-opt-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.loop-opt-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+}
+
+.loop-opt-desc {
+  font-size: 11px;
+  color: #8fa0be;
+  margin-top: 2px;
+  line-height: 1.25;
+}
+
+.loop-opt-check {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--cyan-bright);
+  display: none;
+}
+
+.loop-opt-card.active .loop-opt-check {
+  display: block;
+}
+
+/* Loop button active indicators */
+.mini-loop-btn.active {
+  color: var(--cyan-bright);
+  filter: drop-shadow(0 0 6px var(--cyan-glow));
+}
+
+/* ==========================================================================
+   In-App Confirmation Action Modal
+   ========================================================================== */
+.confirm-card-bottom {
+  text-align: center;
+  align-items: center;
+  padding: 24px 20px 20px;
+}
+
+.confirm-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 68, 68, 0.15);
+  border: 1.5px solid rgba(255, 68, 68, 0.4);
+  color: #ff5252;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.25);
+}
+
+.confirm-icon-box svg {
+  width: 26px;
+  height: 26px;
+}
+
+.confirm-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.confirm-modal-desc {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.45;
+  margin-bottom: 20px;
+}
+
+.confirm-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.confirm-cancel-btn {
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.confirm-danger-btn {
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  font-size: 13.5px;
+  box-shadow: 0 4px 16px rgba(255, 75, 43, 0.4);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.confirm-danger-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 75, 43, 0.55);
+}
+
+.confirm-danger-btn:active {
+  transform: scale(0.97);
+}
+
+/* ==========================================================================
+   Playlist Detail View & Song Management
+   ========================================================================== */
+.track-add-pl-btn {
+  background: none;
+  border: none;
+  color: #4b5870;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast), transform var(--transition-bounce);
+}
+
+.track-add-pl-btn:hover {
+  color: var(--cyan-bright);
+  transform: scale(1.15);
+}
+
+.track-add-pl-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.playlist-detail-card,
+.playlist-add-card {
+  max-height: 85vh;
+  height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-detail-icon-mini {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3);
+}
+
+.playlist-detail-icon-mini svg {
+  width: 18px;
+  height: 18px;
+  stroke: #fff;
+  fill: none;
+}
+
+.playlist-detail-title-text {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.playlist-detail-meta-text {
+  font-size: 11px;
+  color: #8fa0be;
+}
+
+.playlist-detail-actions-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.playlist-play-all-btn,
+.playlist-add-songs-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 12px;
+}
+
+.playlist-songs-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.playlist-song-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.playlist-song-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 242, 254, 0.2);
+  transform: translateX(2px);
+}
+
+.playlist-song-row.is-playing {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: var(--cyan-bright);
+}
+
+.playlist-song-thumb {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #111a2e;
+}
+
+.playlist-song-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.playlist-song-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.playlist-song-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-song-artist {
+  font-size: 11px;
+  color: #8fa0be;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.playlist-song-remove-btn {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+}
+
+.playlist-song-remove-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  transform: scale(1.15);
+}
+
+.playlist-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #8fa0be;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.playlist-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan-bright);
+}
+
+/* Add Songs Multi-Select Modal */
+.add-songs-scroll-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.add-song-selectable-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.add-song-selectable-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.add-song-selectable-row.is-selected {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.45);
+}
+
+.add-song-selectable-row.is-already-in {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.add-song-checkbox-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  font-size: 12px;
+  font-weight: 900;
+  color: transparent;
+}
+
+.add-song-selectable-row.is-selected .add-song-checkbox-circle {
+  background: var(--cyan-bright);
+  border-color: var(--cyan-bright);
+  color: #0b1120;
+}
+
+.add-songs-footer-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Quick Add Single Track Modal */
+.quick-add-pl-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.quick-add-pl-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 242, 254, 0.3);
+}
+
+.quick-add-pl-item.has-track {
+  border-color: rgba(0, 242, 254, 0.4);
+  background: rgba(0, 242, 254, 0.08);
 }

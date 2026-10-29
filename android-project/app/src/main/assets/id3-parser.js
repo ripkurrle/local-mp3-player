@@ -38,6 +38,15 @@ class ID3Parser {
       
       if (id3v2Meta) {
         Object.assign(defaultMeta, id3v2Meta);
+      } else {
+        // If not ID3v2, check if it's an MP4 / M4A container (QuickTime/ISO atoms: moov -> udta -> meta -> ilst)
+        const ext = file.name ? file.name.split('.').pop().toLowerCase() : '';
+        if (ext === 'm4a' || ext === 'aac' || ext === 'mp4' || defaultMeta.format === 'M4A') {
+          const mp4Meta = await ID3Parser.parseMP4(file);
+          if (mp4Meta) {
+            Object.assign(defaultMeta, mp4Meta);
+          }
+        }
       }
 
       // 2. If title or artist still default, try ID3v1 at end of file (128 bytes)
@@ -52,13 +61,17 @@ class ID3Parser {
         }
       }
 
-      // 3. If track has cover picture blob, create Object URL
-      if (defaultMeta.picture && defaultMeta.picture.data) {
+      // 3. If track has cover picture blob, convert to permanent Data URL
+      if (defaultMeta.picture && defaultMeta.picture.data && defaultMeta.picture.data.byteLength > 64) {
         try {
-          const blob = new Blob([defaultMeta.picture.data], { type: defaultMeta.picture.format });
-          defaultMeta.pictureUrl = URL.createObjectURL(blob);
+          const mime = defaultMeta.picture.format || 'image/jpeg';
+          const blob = new Blob([defaultMeta.picture.data], { type: mime });
+          const dataUrl = await ID3Parser.blobToDataUrl(blob);
+          if (dataUrl) {
+            defaultMeta.pictureUrl = dataUrl;
+          }
         } catch (e) {
-          console.warn('Could not create Object URL for picture:', e);
+          console.warn('Could not create Data URL for picture:', e);
         }
       }
 
@@ -74,6 +87,21 @@ class ID3Parser {
     }
 
     return defaultMeta;
+  }
+
+  static blobToDataUrl(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string' && reader.result.startsWith('data:image')) {
+          resolve(reader.result);
+        } else {
+          resolve(null);
+        }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
   }
 
   static readSlice(file, start, end) {
@@ -373,6 +401,148 @@ class ID3Parser {
 
     ctx.restore();
     return canvas.toDataURL('image/jpeg', 0.88);
+  }
+
+  /**
+   * Parse iTunes/M4A metadata from MP4 container atoms (moov -> udta -> meta -> ilst)
+   */
+  static async parseMP4(file) {
+    try {
+      // Find moov atom in first 512KB or last 1MB
+      let foundMoov = null;
+      const headSize = Math.min(file.size, 512 * 1024);
+      const headBuf = await ID3Parser.readSlice(file, 0, headSize);
+      const headView = new DataView(headBuf);
+
+      let off = 0;
+      while (off <= headSize - 8) {
+        const size = headView.getUint32(off);
+        const name = String.fromCharCode(
+          headView.getUint8(off + 4),
+          headView.getUint8(off + 5),
+          headView.getUint8(off + 6),
+          headView.getUint8(off + 7)
+        );
+        if (name === 'moov') {
+          foundMoov = { offset: off, size: size };
+          break;
+        }
+        if (size <= 0) break;
+        off += size;
+      }
+
+      if (!foundMoov && file.size > headSize) {
+        const tailStart = Math.max(0, file.size - 1024 * 1024);
+        const tailBuf = await ID3Parser.readSlice(file, tailStart, file.size);
+        const tailView = new DataView(tailBuf);
+        let tOff = 0;
+        while (tOff <= tailBuf.byteLength - 8) {
+          const size = tailView.getUint32(tOff);
+          const name = String.fromCharCode(
+            tailView.getUint8(tOff + 4),
+            tailView.getUint8(tOff + 5),
+            tailView.getUint8(tOff + 6),
+            tailView.getUint8(tOff + 7)
+          );
+          if (name === 'moov') {
+            foundMoov = { offset: tailStart + tOff, size: size };
+            break;
+          }
+          if (size <= 0) break;
+          tOff += size;
+        }
+      }
+
+      if (!foundMoov) return null;
+
+      const readSize = Math.min(foundMoov.size, 1024 * 1024);
+      const moovAtomBuf = await ID3Parser.readSlice(file, foundMoov.offset, Math.min(file.size, foundMoov.offset + readSize));
+      const view = new DataView(moovAtomBuf);
+
+      return ID3Parser.parseMoovMetadata(view);
+    } catch (e) {
+      console.warn('MP4 metadata parsing error:', e);
+      return null;
+    }
+  }
+
+  static parseMoovMetadata(view) {
+    const findAtom = (start, end, targetName) => {
+      let cur = start;
+      while (cur <= end - 8) {
+        const size = view.getUint32(cur);
+        const name = String.fromCharCode(
+          view.getUint8(cur + 4),
+          view.getUint8(cur + 5),
+          view.getUint8(cur + 6),
+          view.getUint8(cur + 7)
+        );
+        if (name === targetName) {
+          return { start: cur + 8, end: cur + size, size };
+        }
+        if (size <= 0) break;
+        cur += size;
+      }
+      return null;
+    };
+
+    const udta = findAtom(8, view.byteLength, 'udta');
+    if (!udta) return null;
+
+    const meta = findAtom(udta.start, udta.end, 'meta');
+    if (!meta) return null;
+
+    // meta atom has 4 bytes flags/version after header
+    const ilst = findAtom(meta.start + 4, meta.end, 'ilst');
+    if (!ilst) return null;
+
+    const metadata = {};
+    let cur = ilst.start;
+    const decoder = new TextDecoder('utf-8');
+
+    while (cur <= ilst.end - 8) {
+      const atomSize = view.getUint32(cur);
+      const atomName = String.fromCharCode(
+        view.getUint8(cur + 4),
+        view.getUint8(cur + 5),
+        view.getUint8(cur + 6),
+        view.getUint8(cur + 7)
+      );
+      if (atomSize <= 8) {
+        cur += 8;
+        continue;
+      }
+
+      const dataAtom = findAtom(cur + 8, cur + atomSize, 'data');
+      if (dataAtom) {
+        const typeFlags = view.getUint32(dataAtom.start);
+        const payloadStart = dataAtom.start + 8;
+        const payloadLength = dataAtom.end - payloadStart;
+
+        if (payloadLength > 0 && payloadStart + payloadLength <= view.byteLength) {
+          if (atomName === 'covr' || atomName === '©cov') {
+            const mime = (typeFlags === 14) ? 'image/png' : 'image/jpeg';
+            const picBytes = new Uint8Array(view.buffer, view.byteOffset + payloadStart, payloadLength);
+            metadata.picture = { format: mime, data: picBytes };
+          } else {
+            const textBytes = new Uint8Array(view.buffer, view.byteOffset + payloadStart, payloadLength);
+            const textVal = decoder.decode(textBytes).trim();
+            if (atomName === '©nam') metadata.title = textVal;
+            else if (atomName === '©ART' || atomName === 'aART') metadata.artist = textVal;
+            else if (atomName === '©alb') metadata.album = textVal;
+            else if (atomName === '©day') metadata.year = textVal.slice(0, 4);
+            else if (atomName === '©gen' || atomName === 'gnre') metadata.genre = textVal;
+            else if (atomName === 'trkn' && payloadLength >= 4) {
+              metadata.trackNumber = String(view.getUint16(payloadStart + 2));
+            }
+          }
+        }
+      }
+
+      cur += atomSize;
+    }
+
+    return Object.keys(metadata).length > 0 ? metadata : null;
   }
 }
 

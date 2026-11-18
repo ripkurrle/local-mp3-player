@@ -41,13 +41,21 @@
             </div>
           </div>
 
-          <button class="import-trigger-btn" id="import-trigger-btn" title="Add MP3s">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            <span>Import</span>
-          </button>
+          <div class="header-actions-group">
+            <button class="header-icon-btn" id="btn-open-orientation" title="Screen Orientation & Tablet Settings" aria-label="Orientation Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+                <line x1="12" y1="18" x2="12.01" y2="18"/>
+              </svg>
+            </button>
+            <button class="import-trigger-btn" id="import-trigger-btn" title="Add MP3s">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Import</span>
+            </button>
+          </div>
         </div>
 
         <!-- Search Bar -->
@@ -279,28 +287,50 @@
         </div>
       </aside>
 
-      <!-- Bottom Tab Navigation Bar -->
-      <nav class="bottom-nav-bar">
-        <button class="nav-item-btn active" data-view="tracks">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          <span>Tracks</span>
-        </button>
-        <button class="nav-item-btn" data-view="albums">
-          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/></svg>
-          <span>Albums</span>
-        </button>
-        <button class="nav-item-btn" data-view="artists">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span>Artists</span>
-        </button>
-        <button class="nav-item-btn" data-view="eq">
-          <svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-          <span>Sound</span>
-        </button>
-        <button class="nav-item-btn" data-view="playlists">
-          <svg viewBox="0 0 24 24" fill="none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          <span>Library</span>
-        </button>
+      <!-- Bottom Tab / Tablet Side Navigation Bar -->
+      <nav class="bottom-nav-bar" id="app-nav-bar">
+        <div class="sidebar-brand-header">
+          <div class="sidebar-brand-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          </div>
+          <div class="sidebar-brand-text">
+            <h2>Aura Music</h2>
+            <span>Tablet Edition</span>
+          </div>
+        </div>
+
+        <div class="sidebar-nav-items">
+          <button class="nav-item-btn active" data-view="tracks">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <span>Tracks</span>
+          </button>
+          <button class="nav-item-btn" data-view="albums">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/></svg>
+            <span>Albums</span>
+          </button>
+          <button class="nav-item-btn" data-view="artists">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Artists</span>
+          </button>
+          <button class="nav-item-btn" data-view="eq">
+            <svg viewBox="0 0 24 24" fill="none"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            <span>Sound</span>
+          </button>
+          <button class="nav-item-btn" data-view="playlists">
+            <svg viewBox="0 0 24 24" fill="none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span>Library</span>
+          </button>
+        </div>
+
+        <div class="sidebar-bottom-actions">
+          <button class="sidebar-action-btn" id="sidebar-orient-btn" title="Screen Orientation & Tablet Settings" aria-label="Screen Orientation">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+            <span>Orientation</span>
+          </button>
+        </div>
       </nav>
 
       <!-- Full-Screen Now Playing Sheet Modal -->
@@ -326,136 +356,142 @@
           </button>
         </div>
 
-        <!-- Center Display: Vinyl Record + Canvas Visualizer -->
-        <div class="player-art-visualizer-container">
-          <canvas class="visualizer-canvas-layer" id="visualizer-canvas" width="320" height="320"></canvas>
-          
-          <div class="vinyl-disc-wrapper" id="vinyl-disc-wrapper">
-            <div class="vinyl-grooves"></div>
-            <div class="vinyl-center-art">
-              <img id="vinyl-cover-img" src="assets/icon-192.png" alt="Cover">
-            </div>
-            <div class="vinyl-spindle-hole"></div>
-          </div>
+        <div class="sheet-main-body">
+          <div class="sheet-left-pane">
+            <!-- Center Display: Vinyl Record + Canvas Visualizer -->
+            <div class="player-art-visualizer-container">
+              <canvas class="visualizer-canvas-layer" id="visualizer-canvas" width="320" height="320"></canvas>
+              
+              <div class="vinyl-disc-wrapper" id="vinyl-disc-wrapper">
+                <div class="vinyl-grooves"></div>
+                <div class="vinyl-center-art">
+                  <img id="vinyl-cover-img" src="assets/icon-192.png" alt="Cover">
+                </div>
+                <div class="vinyl-spindle-hole"></div>
+              </div>
 
-          <div class="skip-feedback-bubble" id="skip-feedback-bubble">
-            <span class="skip-feedback-icon" id="skip-feedback-icon">⟲</span>
-            <span class="skip-feedback-text" id="skip-feedback-text">10s</span>
-          </div>
+              <div class="skip-feedback-bubble" id="skip-feedback-bubble">
+                <span class="skip-feedback-icon" id="skip-feedback-icon">⟲</span>
+                <span class="skip-feedback-text" id="skip-feedback-text">10s</span>
+              </div>
 
-          <button class="visualizer-mode-toggle" id="viz-mode-toggle" title="Switch Visualizer Style">BARS</button>
-        </div>
-
-        <!-- Song Metadata Row -->
-        <div class="sheet-song-info">
-          <div class="sheet-title-col">
-            <h2 class="sheet-song-title" id="sheet-title">Song Title</h2>
-            <p class="sheet-song-artist" id="sheet-artist">Artist — Album</p>
-          </div>
-          <button class="sheet-fav-btn" id="sheet-fav-btn" title="Favorite">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Scrubber -->
-        <div class="scrubber-container">
-          <div class="scrub-bar" id="scrub-bar">
-            <div class="scrub-progress" id="scrub-progress">
-              <div class="scrub-thumb"></div>
+              <button class="visualizer-mode-toggle" id="viz-mode-toggle" title="Switch Visualizer Style">BARS</button>
             </div>
           </div>
-          <div class="time-row">
-            <span id="time-current">0:00</span>
-            <div class="scrub-quick-nudges">
-              <button class="nudge-btn" id="nudge-back-10" title="Skip back 10 seconds" aria-label="Rewind 10 Seconds">⟲ 10s</button>
+
+          <div class="sheet-right-pane">
+            <!-- Song Metadata Row -->
+            <div class="sheet-song-info">
+              <div class="sheet-title-col">
+                <h2 class="sheet-song-title" id="sheet-title">Song Title</h2>
+                <p class="sheet-song-artist" id="sheet-artist">Artist — Album</p>
+              </div>
+              <button class="sheet-fav-btn" id="sheet-fav-btn" title="Favorite">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              </button>
             </div>
-            <span id="time-total">0:00</span>
+
+            <!-- Scrubber -->
+            <div class="scrubber-container">
+              <div class="scrub-bar" id="scrub-bar">
+                <div class="scrub-progress" id="scrub-progress">
+                  <div class="scrub-thumb"></div>
+                </div>
+              </div>
+              <div class="time-row">
+                <span id="time-current">0:00</span>
+                <div class="scrub-quick-nudges">
+                  <button class="nudge-btn" id="nudge-back-10" title="Skip back 10 seconds" aria-label="Rewind 10 Seconds">⟲ 10s</button>
+                </div>
+                <span id="time-total">0:00</span>
+              </div>
+            </div>
+
+            <!-- Loop Mode Context Pill Indicator -->
+            <div class="loop-indicator-bar">
+              <button class="loop-badge-btn" id="sheet-loop-badge" title="Tap to select Loop Mode" aria-label="Loop Mode">
+                <span class="loop-badge-icon" id="sheet-loop-icon">🔁</span>
+                <span class="loop-badge-text" id="sheet-loop-text">Loop: Library Songs</span>
+                <span class="loop-badge-chevron">▾</span>
+              </button>
+            </div>
+
+            <!-- Main Controls -->
+            <div class="core-controls-row">
+              <button class="ctrl-btn" id="btn-shuffle" title="Shuffle" aria-label="Shuffle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="16 3 21 3 21 8"></polyline>
+                  <line x1="4" y1="20" x2="21" y2="3"></line>
+                  <polyline points="21 16 21 21 16 21"></polyline>
+                  <line x1="15" y1="15" x2="21" y2="21"></line>
+                  <line x1="4" y1="4" x2="9" y2="9"></line>
+                </svg>
+              </button>
+
+              <button class="ctrl-btn" id="btn-prev" title="Previous Track" aria-label="Previous Track">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                  <line x1="5" y1="19" x2="5" y2="5"></line>
+                </svg>
+              </button>
+
+              <button class="ctrl-btn ctrl-btn-seek" id="btn-seek-back" title="Rewind 10 Seconds" aria-label="Rewind 10 Seconds">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 4v6h6"></path>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                  <text x="12" y="15" font-size="7" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" text-anchor="middle" fill="currentColor" stroke="none">10</text>
+                </svg>
+              </button>
+
+              <button class="main-play-pause-btn" id="btn-main-play" title="Play/Pause" aria-label="Play or Pause">
+                <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </button>
+
+              <button class="ctrl-btn ctrl-btn-seek" id="btn-seek-fwd" title="Fast Forward 10 Seconds" aria-label="Fast Forward 10 Seconds">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 4v6h-6"></path>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  <text x="12" y="15" font-size="7" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" text-anchor="middle" fill="currentColor" stroke="none">10</text>
+                </svg>
+              </button>
+
+              <button class="ctrl-btn" id="btn-next" title="Next Track" aria-label="Next Track">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                  <line x1="19" y1="5" x2="19" y2="19"></line>
+                </svg>
+              </button>
+
+              <button class="ctrl-btn active" id="btn-repeat" title="Repeat Mode" aria-label="Repeat Mode">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="17 1 21 5 17 9"></polyline>
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                  <polyline points="7 23 3 19 7 15"></polyline>
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Secondary Actions (Speed, Sleep Timer, Track Metadata) -->
+            <div class="secondary-actions-bar">
+              <button class="sec-action-btn" id="btn-speed" title="Playback Speed">
+                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                <span>1.0x</span>
+              </button>
+
+              <button class="sec-action-btn" id="btn-timer" title="Sleep Timer">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <span>Timer</span>
+              </button>
+
+              <button class="sec-action-btn" id="btn-info" title="Track ID3 Tags">
+                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Details</span>
+              </button>
+            </div>
           </div>
-        </div>
-
-        <!-- Loop Mode Context Pill Indicator -->
-        <div class="loop-indicator-bar">
-          <button class="loop-badge-btn" id="sheet-loop-badge" title="Tap to select Loop Mode" aria-label="Loop Mode">
-            <span class="loop-badge-icon" id="sheet-loop-icon">🔁</span>
-            <span class="loop-badge-text" id="sheet-loop-text">Loop: Library Songs</span>
-            <span class="loop-badge-chevron">▾</span>
-          </button>
-        </div>
-
-        <!-- Main Controls -->
-        <div class="core-controls-row">
-          <button class="ctrl-btn" id="btn-shuffle" title="Shuffle" aria-label="Shuffle">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="16 3 21 3 21 8"></polyline>
-              <line x1="4" y1="20" x2="21" y2="3"></line>
-              <polyline points="21 16 21 21 16 21"></polyline>
-              <line x1="15" y1="15" x2="21" y2="21"></line>
-              <line x1="4" y1="4" x2="9" y2="9"></line>
-            </svg>
-          </button>
-
-          <button class="ctrl-btn" id="btn-prev" title="Previous Track" aria-label="Previous Track">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="19 20 9 12 19 4 19 20"></polygon>
-              <line x1="5" y1="19" x2="5" y2="5"></line>
-            </svg>
-          </button>
-
-          <button class="ctrl-btn ctrl-btn-seek" id="btn-seek-back" title="Rewind 10 Seconds" aria-label="Rewind 10 Seconds">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 4v6h6"></path>
-              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-              <text x="12" y="15" font-size="7" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" text-anchor="middle" fill="currentColor" stroke="none">10</text>
-            </svg>
-          </button>
-
-          <button class="main-play-pause-btn" id="btn-main-play" title="Play/Pause" aria-label="Play or Pause">
-            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          </button>
-
-          <button class="ctrl-btn ctrl-btn-seek" id="btn-seek-fwd" title="Fast Forward 10 Seconds" aria-label="Fast Forward 10 Seconds">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 4v6h-6"></path>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-              <text x="12" y="15" font-size="7" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" text-anchor="middle" fill="currentColor" stroke="none">10</text>
-            </svg>
-          </button>
-
-          <button class="ctrl-btn" id="btn-next" title="Next Track" aria-label="Next Track">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="5 4 15 12 5 20 5 4"></polygon>
-              <line x1="19" y1="5" x2="19" y2="19"></line>
-            </svg>
-          </button>
-
-          <button class="ctrl-btn active" id="btn-repeat" title="Repeat Mode" aria-label="Repeat Mode">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="17 1 21 5 17 9"></polyline>
-              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-              <polyline points="7 23 3 19 7 15"></polyline>
-              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Secondary Actions (Speed, Sleep Timer, Track Metadata) -->
-        <div class="secondary-actions-bar">
-          <button class="sec-action-btn" id="btn-speed" title="Playback Speed">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
-            <span>1.0x</span>
-          </button>
-
-          <button class="sec-action-btn" id="btn-timer" title="Sleep Timer">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <span>Timer</span>
-          </button>
-
-          <button class="sec-action-btn" id="btn-info" title="Track ID3 Tags">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <span>Details</span>
-          </button>
         </div>
 
       </div>
@@ -887,6 +923,66 @@
             <div class="diag-log-container" id="diag-log-container"></div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- Screen Orientation & Tablet Settings Modal -->
+      <div class="modal-overlay" id="orientation-modal" role="dialog" aria-modal="true">
+        <div class="modal-card-bottom orientation-modal-card">
+          <div class="modal-header-row">
+            <div>
+              <h3>Screen Orientation</h3>
+              <p class="modal-subtitle">Set portrait or landscape & locking mode</p>
+            </div>
+            <button class="modal-close-btn" id="orientation-modal-close">&times;</button>
+          </div>
+
+          <div class="orientation-options-grid">
+            <button class="orientation-card active" id="opt-orient-portrait" data-mode="portrait">
+              <div class="orientation-card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                  <line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+              </div>
+              <div class="orientation-card-label">Portrait</div>
+              <div class="orientation-card-badge">Default</div>
+            </button>
+
+            <button class="orientation-card" id="opt-orient-landscape" data-mode="landscape">
+              <div class="orientation-card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="5" width="20" height="14" rx="2" ry="2"/>
+                  <line x1="18" y1="12" x2="18.01" y2="12"/>
+                </svg>
+              </div>
+              <div class="orientation-card-label">Landscape</div>
+              <div class="orientation-card-badge">Expanded</div>
+            </button>
+          </div>
+
+          <div class="orientation-lock-card">
+            <div class="orientation-lock-info">
+              <div class="orientation-lock-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span>Lock Orientation</span>
+              </div>
+              <div class="orientation-lock-desc" id="orient-lock-desc">
+                When locked, the app stays in the selected orientation regardless of device tilt.
+              </div>
+            </div>
+            <label class="orient-toggle-switch">
+              <input type="checkbox" id="orient-lock-checkbox" checked>
+              <span class="orient-slider"></span>
+            </label>
+          </div>
+
+          <div class="orientation-status-footer" id="orient-status-summary">
+            Current: <span class="orient-highlight">Portrait (Locked)</span>
+          </div>
         </div>
       </div>
 

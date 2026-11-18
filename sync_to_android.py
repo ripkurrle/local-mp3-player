@@ -86,6 +86,17 @@ for md in manifest_dests:
         shutil.copy2(src_manifest, md)
         print(f"Synced AndroidManifest.xml -> {md}")
 
+# Synchronize res/values/styles.xml across all Android copies
+src_styles = os.path.join(src_dir, "android-project/app/src/main/res/values/styles.xml")
+styles_dests = [
+    "/home/user1/AndroidStudioProjects/AuraMusicPlayer/app/src/main/res/values/styles.xml",
+    "/home/user1/AndroidStudioProjects/local-mp3-player/android-project/app/src/main/res/values/styles.xml"
+]
+for std in styles_dests:
+    if os.path.exists(os.path.dirname(std)):
+        shutil.copy2(src_styles, std)
+        print(f"Synced styles.xml -> {std}")
+
 # Synchronize build.gradle across all Android copies
 src_top_gradle = os.path.join(src_dir, "android-project/build.gradle")
 top_gradle_dests = [
@@ -108,6 +119,17 @@ for ad in app_gradle_dests:
         shutil.copy2(src_app_gradle, ad)
         print(f"Synced app/build.gradle -> {ad}")
 
+# Synchronize app/proguard-rules.pro across all Android copies
+src_proguard = os.path.join(src_dir, "android-project/app/proguard-rules.pro")
+proguard_dests = [
+    "/home/user1/AndroidStudioProjects/AuraMusicPlayer/app/proguard-rules.pro",
+    "/home/user1/AndroidStudioProjects/local-mp3-player/android-project/app/proguard-rules.pro"
+]
+for pd in proguard_dests:
+    if os.path.exists(os.path.dirname(pd)):
+        shutil.copy2(src_proguard, pd)
+        print(f"Synced app/proguard-rules.pro -> {pd}")
+
 # Synchronize app/google-services.json across all Android copies
 src_gs = os.path.join(src_dir, "android-project/app/google-services.json")
 gs_dests = [
@@ -129,6 +151,17 @@ for gid in gitignore_dests:
     if os.path.exists(os.path.dirname(gid)):
         shutil.copy2(src_gitignore, gid)
         print(f"Synced .gitignore -> {gid}")
+
+# Synchronize gradle.properties across all Android copies
+src_props = os.path.join(src_dir, "android-project/gradle.properties")
+props_dests = [
+    "/home/user1/AndroidStudioProjects/AuraMusicPlayer/gradle.properties",
+    "/home/user1/AndroidStudioProjects/local-mp3-player/android-project/gradle.properties"
+]
+for prd in props_dests:
+    if os.path.exists(os.path.dirname(prd)):
+        shutil.copy2(src_props, prd)
+        print(f"Synced gradle.properties -> {prd}")
 
 # Synchronize res/mipmap launcher icons across Android copies
 src_res = os.path.join(src_dir, "android-project/app/src/main/res")

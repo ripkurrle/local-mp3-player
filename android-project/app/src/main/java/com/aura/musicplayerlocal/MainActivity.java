@@ -10,7 +10,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.BatteryManager;
@@ -44,6 +47,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.EdgeToEdge;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -595,11 +599,78 @@ public class MainActivity extends AppCompatActivity {
             }
             return null;
         }
+
+        @JavascriptInterface
+        public void setScreenOrientation(String mode, boolean locked) {
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            prefs.edit()
+                .putString(PREF_ORIENTATION_MODE, mode)
+                .putBoolean(PREF_ORIENTATION_LOCKED, locked)
+                .apply();
+            applyScreenOrientation(mode, locked);
+        }
+
+        @JavascriptInterface
+        public String getScreenOrientationSetting() {
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String mode = prefs.getString(PREF_ORIENTATION_MODE, "portrait");
+            boolean locked = prefs.getBoolean(PREF_ORIENTATION_LOCKED, true);
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("mode", mode);
+                obj.put("locked", locked);
+                return obj.toString();
+            } catch (Exception e) {
+                return "{\"mode\":\"portrait\",\"locked\":true}";
+            }
+        }
+
+        @JavascriptInterface
+        public boolean isTabletDevice() {
+            try {
+                return (getResources().getConfiguration().screenLayout
+                    & Configuration.SCREENLAYOUT_SIZE_MASK)
+                    >= Configuration.SCREENLAYOUT_SIZE_LARGE;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+    }
+
+    public static final String PREFS_NAME = "aura_settings";
+    public static final String PREF_ORIENTATION_MODE = "orientation_mode";
+    public static final String PREF_ORIENTATION_LOCKED = "orientation_locked";
+
+    private void initOrientationPreference() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String mode = prefs.getString(PREF_ORIENTATION_MODE, "portrait");
+        boolean locked = prefs.getBoolean(PREF_ORIENTATION_LOCKED, true);
+        applyScreenOrientation(mode, locked);
+    }
+
+    public void applyScreenOrientation(String mode, boolean locked) {
+        runOnUiThread(() -> {
+            try {
+                if (locked) {
+                    if ("landscape".equalsIgnoreCase(mode)) {
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE);
+                    } else {
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT);
+                    }
+                } else {
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
+                }
+            } catch (Exception e) {
+                Log.w("AuraPlayer", "Cannot set requested orientation: " + e.getMessage());
+            }
+        });
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        initOrientationPreference();
 
         try {
             FirebaseApp.initializeApp(this);
@@ -614,15 +685,9 @@ public class MainActivity extends AppCompatActivity {
             Log.w("AuraPlayer", "Firebase Crashlytics init note: " + t.getMessage());
         }
 
-        // Enable edge-to-edge full screen
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            getWindow().getAttributes().layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-        }
-
-        setFullScreenImmersive();
+        // Enable modern edge-to-edge (Android 15+ compatible)
+        EdgeToEdge.enable(this);
+        updateSystemBars();
 
         webView = new WebView(this);
         webView.setLayoutParams(new ViewGroup.LayoutParams(
@@ -665,7 +730,7 @@ public class MainActivity extends AppCompatActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
-            setFullScreenImmersive();
+            updateSystemBars();
         }
     }
 
@@ -673,7 +738,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         isActivityResumed = true;
-        setFullScreenImmersive();
+        updateSystemBars();
         if (!isCurrentlyPlaying && !isPauseDismissTimerActive) {
             dismissNotification();
         }
@@ -706,15 +771,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setFullScreenImmersive() {
+    private void updateSystemBars() {
         WindowInsetsControllerCompat controller =
             WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         if (controller != null) {
-            // Hide the system status bar and navigation bar so they never overlap the app UI
-            controller.hide(WindowInsetsCompat.Type.systemBars());
-            controller.setSystemBarsBehavior(
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            );
+            // Dark theme: ensure status bar and navigation bar icons/text are light (white) on dark background
+            controller.setAppearanceLightStatusBars(false);
+            controller.setAppearanceLightNavigationBars(false);
         }
     }
 

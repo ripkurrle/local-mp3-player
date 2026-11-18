@@ -30,6 +30,7 @@ class AuraApp {
 
   async init() {
     this.cacheDOMElements();
+    this.initOrientationSettings();
     this.bindEvents();
     this.audioEngine.bindCanvas(this.dom.visualizerCanvas);
 
@@ -228,6 +229,17 @@ class AuraApp {
       deviceViewport: document.getElementById('device-viewport'),
       toggleDesktopFrameBtn: document.getElementById('toggle-desktop-frame'),
 
+      // Orientation & Tablet elements
+      btnOpenOrientation: document.getElementById('btn-open-orientation'),
+      sidebarOrientBtn: document.getElementById('sidebar-orient-btn'),
+      orientationModal: document.getElementById('orientation-modal'),
+      orientationModalClose: document.getElementById('orientation-modal-close'),
+      optOrientPortrait: document.getElementById('opt-orient-portrait'),
+      optOrientLandscape: document.getElementById('opt-orient-landscape'),
+      orientLockCheckbox: document.getElementById('orient-lock-checkbox'),
+      orientStatusSummary: document.getElementById('orient-status-summary'),
+      orientLockDesc: document.getElementById('orient-lock-desc'),
+
       // Toast
       toast: document.getElementById('toast-notice')
     };
@@ -266,6 +278,41 @@ class AuraApp {
         this.switchView(view);
       });
     });
+
+    // Orientation Modal Triggers & Controls
+    if (this.dom.btnOpenOrientation) {
+      this.dom.btnOpenOrientation.addEventListener('click', () => {
+        this.openModal(this.dom.orientationModal);
+      });
+    }
+    if (this.dom.sidebarOrientBtn) {
+      this.dom.sidebarOrientBtn.addEventListener('click', () => {
+        this.openModal(this.dom.orientationModal);
+      });
+    }
+    if (this.dom.orientationModalClose) {
+      this.dom.orientationModalClose.addEventListener('click', () => {
+        this.closeModal(this.dom.orientationModal);
+      });
+    }
+    if (this.dom.optOrientPortrait) {
+      this.dom.optOrientPortrait.addEventListener('click', () => {
+        const locked = this.dom.orientLockCheckbox ? this.dom.orientLockCheckbox.checked : true;
+        this.setOrientation('portrait', locked);
+      });
+    }
+    if (this.dom.optOrientLandscape) {
+      this.dom.optOrientLandscape.addEventListener('click', () => {
+        const locked = this.dom.orientLockCheckbox ? this.dom.orientLockCheckbox.checked : true;
+        this.setOrientation('landscape', locked);
+      });
+    }
+    if (this.dom.orientLockCheckbox) {
+      this.dom.orientLockCheckbox.addEventListener('change', (e) => {
+        const mode = (this.currentOrientation && this.currentOrientation.mode) ? this.currentOrientation.mode : 'portrait';
+        this.setOrientation(mode, e.target.checked);
+      });
+    }
 
     // Desktop Frame Toggle
     if (this.dom.toggleDesktopFrameBtn) {
@@ -2886,6 +2933,114 @@ class AuraApp {
     this.toastTimeout = setTimeout(() => {
       this.dom.toast.classList.remove('visible');
     }, 2400);
+  }
+
+  // --- Screen Orientation & Tablet Layout Management ---
+
+  initOrientationSettings() {
+    let mode = 'portrait';
+    let locked = true;
+
+    // Check Android bridge first
+    if (window.AndroidBridge && typeof window.AndroidBridge.getScreenOrientationSetting === 'function') {
+      try {
+        const raw = window.AndroidBridge.getScreenOrientationSetting();
+        const parsed = JSON.parse(raw);
+        if (parsed.mode) mode = parsed.mode;
+        if (typeof parsed.locked === 'boolean') locked = parsed.locked;
+      } catch (e) {
+        console.warn('Could not read orientation from bridge:', e);
+      }
+    } else {
+      // Fallback to localStorage for standalone browser/PWA
+      try {
+        const saved = localStorage.getItem('aura_orientation_setting');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.mode) mode = parsed.mode;
+          if (typeof parsed.locked === 'boolean') locked = parsed.locked;
+        }
+      } catch (e) {
+        console.warn('Could not read orientation from localStorage:', e);
+      }
+    }
+
+    // Check if tablet device
+    let isTablet = false;
+    if (window.AndroidBridge && typeof window.AndroidBridge.isTabletDevice === 'function') {
+      try {
+        isTablet = window.AndroidBridge.isTabletDevice();
+      } catch (e) {}
+    } else {
+      isTablet = (window.innerWidth >= 768);
+    }
+
+    if (isTablet) {
+      document.body.classList.add('is-tablet');
+    }
+
+    this.currentOrientation = { mode, locked };
+    this.applyOrientation(mode, locked, false);
+  }
+
+  setOrientation(mode, locked) {
+    this.currentOrientation = { mode, locked };
+
+    // Persist to Android bridge
+    if (window.AndroidBridge && typeof window.AndroidBridge.setScreenOrientation === 'function') {
+      try {
+        window.AndroidBridge.setScreenOrientation(mode, locked);
+      } catch (e) {
+        console.warn('Error setting screen orientation on bridge:', e);
+      }
+    }
+
+    // Persist to localStorage
+    try {
+      localStorage.setItem('aura_orientation_setting', JSON.stringify({ mode, locked }));
+    } catch (e) {}
+
+    this.applyOrientation(mode, locked, true);
+  }
+
+  applyOrientation(mode, locked, showToast = false) {
+    const isLandscape = (mode === 'landscape');
+
+    document.body.classList.toggle('layout-landscape', isLandscape);
+    document.body.classList.toggle('layout-portrait', !isLandscape);
+    document.body.classList.toggle('orient-locked', locked);
+    document.body.classList.toggle('orient-unlocked', !locked);
+
+    // Update Modal UI
+    if (this.dom.optOrientPortrait) {
+      this.dom.optOrientPortrait.classList.toggle('active', !isLandscape);
+    }
+    if (this.dom.optOrientLandscape) {
+      this.dom.optOrientLandscape.classList.toggle('active', isLandscape);
+    }
+    if (this.dom.orientLockCheckbox) {
+      this.dom.orientLockCheckbox.checked = locked;
+    }
+    if (this.dom.orientStatusSummary) {
+      const modeLabel = isLandscape ? 'Landscape' : 'Portrait';
+      const lockLabel = locked ? 'Locked' : 'Auto-Rotate Sensor';
+      this.dom.orientStatusSummary.innerHTML = `Current: <span class="orient-highlight">${modeLabel} (${lockLabel})</span>`;
+    }
+    if (this.dom.orientLockDesc) {
+      this.dom.orientLockDesc.textContent = locked
+        ? `When locked, the app stays in ${isLandscape ? 'Landscape' : 'Portrait'} mode regardless of device tilt.`
+        : `When unlocked, the app will auto-rotate following your device tilt sensor.`;
+    }
+
+    if (showToast) {
+      const modeLabel = isLandscape ? 'Landscape' : 'Portrait';
+      const lockLabel = locked ? 'Locked' : 'Sensor Unlocked';
+      this.showToast(`Orientation: ${modeLabel} (${lockLabel})`);
+    }
+
+    if (window.auraDiagnostics) {
+      window.auraDiagnostics.log('SYS', 'ORIENTATION_CHANGED', { mode, locked });
+    }
   }
 }
 

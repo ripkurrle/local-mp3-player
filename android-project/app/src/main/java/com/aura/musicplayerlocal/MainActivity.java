@@ -19,6 +19,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.ViewGroup;
@@ -96,12 +98,27 @@ public class MainActivity extends AppCompatActivity {
     public static final String ACTION_PREV = "com.aura.musicplayerlocal.ACTION_PREV";
     public static final String ACTION_TOGGLE = "com.aura.musicplayerlocal.ACTION_TOGGLE";
     public static final String ACTION_NEXT = "com.aura.musicplayerlocal.ACTION_NEXT";
+    public static final String ACTION_DISMISS = "com.aura.musicplayerlocal.ACTION_DISMISS";
     private static final String CHANNEL_ID = "aura_playback_channel";
     private static final int NOTIFICATION_ID = 1001;
+    private static final long PAUSE_DISMISS_DELAY_MS = 2 * 60 * 1000L; // 2-minute delay before putting notification to sleep
 
     private volatile boolean isCurrentlyPlaying = false;
+    private volatile boolean isPauseDismissTimerActive = false;
     private boolean isActivityResumed = false;
     private PowerManager.WakeLock activityWakeLock;
+    private final Handler pauseHandler = new Handler(Looper.getMainLooper());
+    private final Runnable pauseDismissRunnable = () -> {
+        Log.d("AuraPlayer", "2-minute pause timeout elapsed. Dismissing notification and putting app to sleep.");
+        dismissNotification();
+    };
+
+    private void cancelPauseDismissTimer() {
+        isPauseDismissTimerActive = false;
+        if (pauseHandler != null && pauseDismissRunnable != null) {
+            pauseHandler.removeCallbacks(pauseDismissRunnable);
+        }
+    }
 
     private static final List<String> nativeLogs = Collections.synchronizedList(new ArrayList<>());
 
@@ -125,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static void logNativeEvent(String tag, String message) {
         try {
-            String time = new SimpleDateFormat("HH:mm:ss.SSS", Locale.ROOT).format(new Date());
+            String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.ROOT).format(new Date());
             String entry = "[" + time + "] " + tag + ": " + message;
             Log.d(tag, message);
             synchronized (nativeLogs) {
@@ -186,12 +203,14 @@ public class MainActivity extends AppCompatActivity {
             if (Intent.ACTION_SCREEN_OFF.equals(action) ||
                 PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED.equals(action)) {
                 Log.d("AuraPlayer", "System sleep/idle event (" + action + ") received. isCurrentlyPlaying=" + isCurrentlyPlaying);
-                if (!isCurrentlyPlaying) {
-                    Log.d("AuraPlayer", "App put to sleep while inactive. Immediately dismissing notification.");
-                    dismissNotification();
-                } else {
+                if (isCurrentlyPlaying) {
                     // While music is playing, the screen can dim and turn off, but music continues uninterrupted!
                     acquirePlaybackWakeLock();
+                } else if (!isPauseDismissTimerActive) {
+                    Log.d("AuraPlayer", "App put to sleep while inactive and not paused. Dismissing notification.");
+                    dismissNotification();
+                } else {
+                    Log.d("AuraPlayer", "Screen turned off while paused. 2-minute grace timer remains active.");
                 }
             }
         }
@@ -232,6 +251,9 @@ public class MainActivity extends AppCompatActivity {
                 if (webView != null) {
                     webView.post(() -> webView.evaluateJavascript("if (window.auraApp) { window.auraApp.playNext(); }", null));
                 }
+            } else if (ACTION_DISMISS.equals(action)) {
+                Log.d("AuraPlayer", "User manually dismissed playback notification.");
+                dismissNotification();
             }
         }
     };
@@ -436,18 +458,35 @@ public class MainActivity extends AppCompatActivity {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
                         if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
-                            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                            intent.setData(Uri.parse("package:" + getPackageName()));
-                            startActivity(intent);
+                            try {
+                                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                                intent.setData(Uri.parse("package:" + getPackageName()));
+                                startActivity(intent);
+                            } catch (Exception e1) {
+                                Log.w("AuraPlayer", "ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS failed, opening app details settings", e1);
+                                try {
+                                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                    intent.setData(Uri.parse("package:" + getPackageName()));
+                                    startActivity(intent);
+                                    Toast.makeText(MainActivity.this, "Tap Battery -> Select 'Unrestricted'", Toast.LENGTH_LONG).show();
+                                } catch (Exception e2) {
+                                    Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                                    startActivity(intent);
+                                }
+                            }
                         } else {
                             Toast.makeText(MainActivity.this, "Aura already has Unrestricted battery usage", Toast.LENGTH_SHORT).show();
                         }
+                    } else {
+                        Toast.makeText(MainActivity.this, "Battery optimization is not applicable on Android 5 or earlier", Toast.LENGTH_SHORT).show();
                     }
                 } catch (Exception e) {
                     Log.e("AuraPlayer", "Error opening battery optimization request", e);
                     try {
-                        Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
                         startActivity(intent);
+                        Toast.makeText(MainActivity.this, "Tap Battery -> Select 'Unrestricted'", Toast.LENGTH_LONG).show();
                     } catch (Exception ex) {
                         Toast.makeText(MainActivity.this, "Open Android Settings -> Apps -> Aura -> Battery -> Unrestricted", Toast.LENGTH_LONG).show();
                     }
@@ -458,18 +497,14 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void updateNotification(String title, String artist, String album, boolean isPlaying) {
             runOnUiThread(() -> {
-                isCurrentlyPlaying = isPlaying;
-                if (!isPlaying) {
-                    dismissNotification();
-                } else {
-                    showOrUpdateNotification(title, artist, album, true);
-                }
+                showOrUpdateNotification(title, artist, album, isPlaying);
             });
         }
 
         @JavascriptInterface
         public void hideNotification() {
             runOnUiThread(() -> {
+                cancelPauseDismissTimer();
                 isCurrentlyPlaying = false;
                 dismissNotification();
             });
@@ -481,6 +516,27 @@ public class MainActivity extends AppCompatActivity {
             String uri = fileUriMap.get(fileName);
             if (uri != null) return uri;
             return fileUriMap.get(cleanFileName(fileName));
+        }
+
+        @JavascriptInterface
+        public String getFilePathForUri(String uriStr) {
+            if (uriStr == null || uriStr.isEmpty()) return null;
+            try {
+                Uri uri = Uri.parse(uriStr);
+                return resolveDeviceLocationFromUri(uri, null);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        @JavascriptInterface
+        public String getFilePathForFilename(String fileName) {
+            if (fileName == null || fileName.isEmpty()) return null;
+            String uriStr = getContentUriForFilename(fileName);
+            if (uriStr != null) {
+                return getFilePathForUri(uriStr);
+            }
+            return null;
         }
 
         @JavascriptInterface
@@ -583,6 +639,7 @@ public class MainActivity extends AppCompatActivity {
         filter.addAction(ACTION_PREV);
         filter.addAction(ACTION_TOGGLE);
         filter.addAction(ACTION_NEXT);
+        filter.addAction(ACTION_DISMISS);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.registerReceiver(this, mediaReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         } else {
@@ -617,7 +674,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         isActivityResumed = true;
         setFullScreenImmersive();
-        if (!isCurrentlyPlaying) {
+        if (!isCurrentlyPlaying && !isPauseDismissTimerActive) {
             dismissNotification();
         }
     }
@@ -626,7 +683,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         isActivityResumed = false;
-        if (!isCurrentlyPlaying) {
+        if (!isCurrentlyPlaying && !isPauseDismissTimerActive) {
             dismissNotification();
         }
     }
@@ -635,8 +692,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         isActivityResumed = false;
-        if (!isCurrentlyPlaying) {
-            Log.d("AuraPlayer", "App stopped/backgrounded while inactive. Dismissing notification.");
+        if (!isCurrentlyPlaying && !isPauseDismissTimerActive) {
+            Log.d("AuraPlayer", "App stopped/backgrounded while inactive and not paused. Dismissing notification.");
             dismissNotification();
         }
     }
@@ -644,7 +701,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (!isCurrentlyPlaying) {
+        if (!isCurrentlyPlaying && !isPauseDismissTimerActive) {
             dismissNotification();
         }
     }
@@ -1151,6 +1208,9 @@ public class MainActivity extends AppCompatActivity {
                     obj.put("url", "https://appassets.androidplatform.net/local-media?uri=" + encodedUri + "&ext=" + extParam);
                     obj.put("pictureUrl", "https://appassets.androidplatform.net/local-media-art?uri=" + encodedUri);
                     obj.put("contentUri", uriStr);
+                    String location = resolveDeviceLocationFromUri(uri, fileName);
+                    obj.put("location", location);
+                    obj.put("filePath", location);
                     obj.put("isFavorite", false);
                     obj.put("playCount", 0);
                     obj.put("addedAt", System.currentTimeMillis());
@@ -1272,6 +1332,9 @@ public class MainActivity extends AppCompatActivity {
                     obj.put("url", "https://appassets.androidplatform.net/local-media?uri=" + encodedUri + "&ext=" + extParam);
                     obj.put("pictureUrl", "https://appassets.androidplatform.net/local-media-art?uri=" + encodedUri);
                     obj.put("contentUri", uriStr);
+                    String location = resolveDeviceLocationFromUri(file.getUri(), fileName);
+                    obj.put("location", location);
+                    obj.put("filePath", location);
                     obj.put("isFavorite", false);
                     obj.put("playCount", 0);
                     obj.put("addedAt", System.currentTimeMillis());
@@ -1811,6 +1874,81 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public String resolveDeviceLocationFromUri(Uri uri, String fallbackFileName) {
+        if (uri == null) return fallbackFileName != null ? fallbackFileName : "Local Storage";
+        try {
+            if ("file".equalsIgnoreCase(uri.getScheme())) {
+                String p = uri.getPath();
+                if (p != null && !p.isEmpty()) return p;
+            }
+
+            // 1. Try DocumentsContract document ID
+            if (DocumentsContract.isDocumentUri(this, uri)) {
+                String docId = DocumentsContract.getDocumentId(uri);
+                if (docId != null) {
+                    if (docId.startsWith("primary:")) {
+                        return "/storage/emulated/0/" + docId.substring("primary:".length());
+                    } else if (docId.contains(":")) {
+                        String[] parts = docId.split(":", 2);
+                        if (parts.length == 2) {
+                            return "/storage/" + (parts[0].equalsIgnoreCase("primary") ? "emulated/0" : parts[0]) + "/" + parts[1];
+                        }
+                    } else if (docId.startsWith("raw:")) {
+                        return docId.substring("raw:".length());
+                    }
+                }
+            }
+
+            // 2. Try MediaStore query for DATA or relative_path
+            String[] projection = {
+                MediaStore.MediaColumns.DATA,
+                "relative_path",
+                android.provider.OpenableColumns.DISPLAY_NAME
+            };
+            try (android.database.Cursor cursor = getContentResolver().query(uri, projection, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int dataIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DATA);
+                    if (dataIdx >= 0) {
+                        String data = cursor.getString(dataIdx);
+                        if (data != null && data.startsWith("/")) {
+                            return data;
+                        }
+                    }
+                    int relIdx = cursor.getColumnIndex("relative_path");
+                    int nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (relIdx >= 0) {
+                        String rel = cursor.getString(relIdx);
+                        String name = nameIdx >= 0 ? cursor.getString(nameIdx) : "";
+                        if (rel != null && !rel.isEmpty()) {
+                            return "/storage/emulated/0/" + (rel.endsWith("/") ? rel : rel + "/") + name;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // 3. Fallback to tree URI / decoded URI path
+            String path = uri.getPath();
+            if (path != null) {
+                String decoded = URLDecoder.decode(path, "UTF-8");
+                if (decoded.contains("primary:")) {
+                    int idx = decoded.indexOf("primary:");
+                    return "/storage/emulated/0/" + decoded.substring(idx + "primary:".length());
+                } else if (decoded.contains("document/")) {
+                    int idx = decoded.indexOf("document/");
+                    String sub = decoded.substring(idx + "document/".length());
+                    if (sub.contains(":")) {
+                        String[] parts = sub.split(":", 2);
+                        return "/storage/" + (parts[0].equalsIgnoreCase("primary") ? "emulated/0" : parts[0]) + "/" + parts[1];
+                    }
+                }
+                return decoded;
+            }
+        } catch (Exception e) {
+            Log.w("AuraPlayer", "Error resolving path for URI " + uri, e);
+        }
+        return fallbackFileName != null ? fallbackFileName : uri.toString();
+    }
+
     private String getFileNameFromUri(Uri uri) {
         if (uri == null) return null;
         String fileName = null;
@@ -1840,6 +1978,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         isActivityResumed = false;
         isCurrentlyPlaying = false;
+        cancelPauseDismissTimer();
         releasePlaybackWakeLock();
         try {
             unregisterReceiver(mediaReceiver);
@@ -1871,9 +2010,14 @@ public class MainActivity extends AppCompatActivity {
         this.isCurrentlyPlaying = isPlaying;
 
         if (isPlaying) {
+            cancelPauseDismissTimer();
             acquirePlaybackWakeLock();
         } else {
             releasePlaybackWakeLock();
+            cancelPauseDismissTimer();
+            isPauseDismissTimerActive = true;
+            pauseHandler.postDelayed(pauseDismissRunnable, PAUSE_DISMISS_DELAY_MS);
+            Log.d("AuraPlayer", "Music paused. 2-minute notification grace timer started.");
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -1916,8 +2060,16 @@ public class MainActivity extends AppCompatActivity {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
 
+            Intent dismissIntent = new Intent(ACTION_DISMISS).setPackage(getPackageName());
+            PendingIntent dismissPendingIntent = PendingIntent.getBroadcast(
+                this,
+                4,
+                dismissIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
             String trackTitle = (title != null && !title.trim().isEmpty()) ? title : "Aura Music Player";
-            String trackSubtext = (artist != null && !artist.trim().isEmpty()) ? artist : "Playing local music";
+            String trackSubtext = (artist != null && !artist.trim().isEmpty()) ? artist : (isPlaying ? "Playing local music" : "Paused");
             if (album != null && !album.trim().isEmpty() && !album.equals("Single") && !album.equals("Unknown")) {
                 trackSubtext += " • " + album;
             }
@@ -1932,6 +2084,7 @@ public class MainActivity extends AppCompatActivity {
                 .setContentIntent(contentPendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setOngoing(isPlaying)
+                .setDeleteIntent(dismissPendingIntent)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .addAction(android.R.drawable.ic_media_previous, "Previous", prevPendingIntent)
@@ -1947,6 +2100,7 @@ public class MainActivity extends AppCompatActivity {
                 Intent serviceIntent = new Intent(this, PlaybackService.class);
                 serviceIntent.setAction(PlaybackService.ACTION_START);
                 serviceIntent.putExtra(PlaybackService.EXTRA_NOTIFICATION, notification);
+                serviceIntent.putExtra(PlaybackService.EXTRA_IS_PLAYING, isPlaying);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     startForegroundService(serviceIntent);
                 } else {
@@ -1962,6 +2116,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void dismissNotification() {
         try {
+            cancelPauseDismissTimer();
             isCurrentlyPlaying = false;
             releasePlaybackWakeLock();
 

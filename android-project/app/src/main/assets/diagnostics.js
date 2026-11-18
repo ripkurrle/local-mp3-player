@@ -76,8 +76,62 @@ class AuraDiagnostics {
 
   // --- Logging Core ---
 
+  getLogDateTimeParts(item) {
+    if (!item) return { date: '', time: '', full: '' };
+
+    let dateStr = item.date;
+    let timeStr = item.time;
+
+    // Fallback extraction from ISO or timestamp ID if date is missing
+    if (!dateStr) {
+      if (item.iso) {
+        try {
+          const d = new Date(item.iso);
+          if (!isNaN(d.getTime())) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
+          }
+        } catch (e) {}
+      } else if (item.id && typeof item.id === 'number') {
+        try {
+          const d = new Date(item.id);
+          if (!isNaN(d.getTime())) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (!dateStr) {
+      const today = new Date();
+      dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    // If timeStr already contains date, split it cleanly
+    if (timeStr && timeStr.includes(' ')) {
+      const parts = timeStr.split(' ');
+      dateStr = parts[0];
+      timeStr = parts[1];
+    }
+
+    return {
+      date: dateStr,
+      time: timeStr || '00:00:00.000',
+      full: `${dateStr} ${timeStr || ''}`.trim()
+    };
+  }
+
   log(category, level, message, details = {}) {
     const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
     
     // Automatically attach active playback snapshot if not provided
@@ -85,6 +139,7 @@ class AuraDiagnostics {
 
     const entry = {
       id: Date.now() + Math.random(),
+      date: dateStr,
       time: timeStr,
       iso: now.toISOString(),
       category: category.toUpperCase(), // 'AUDIO' | 'STREAM' | 'SYSTEM' | 'POWER' | 'WATCHDOG'
@@ -100,7 +155,7 @@ class AuraDiagnostics {
     }
 
     // Mirror to standard browser console with distinct styling
-    const consolePrefix = `[AuraDiag][${entry.category}][${entry.level}]`;
+    const consolePrefix = `[AuraDiag][${entry.date} ${entry.time}][${entry.category}][${entry.level}]`;
     if (level === 'ERROR') {
       console.error(consolePrefix, message, details);
     } else if (level === 'WARN') {
@@ -113,7 +168,7 @@ class AuraDiagnostics {
     if (window.AndroidBridge) {
       try {
         if (typeof window.AndroidBridge.logCrashlytics === 'function') {
-          window.AndroidBridge.logCrashlytics(`[${entry.category}][${entry.level}] ${message}`);
+          window.AndroidBridge.logCrashlytics(`[${entry.date} ${entry.time}][${entry.category}][${entry.level}] ${message}`);
         }
         if (level === 'ERROR' && typeof window.AndroidBridge.recordNonFatal === 'function') {
           const stack = (details && details.error) ? details.error : (new Error().stack || '');
@@ -266,6 +321,7 @@ class AuraDiagnostics {
         title: track ? track.title : 'No Track Loaded',
         artist: track ? track.artist : 'N/A',
         format: track ? track.format : 'N/A',
+        location: track ? (track.location || track.filePath || (track.fileBlob && track.fileBlob.name) || track.url || 'Local Device') : 'N/A',
         durationSec: track ? track.duration : (audio ? audio.duration : 0),
         durationFormatted: this.formatTime((track && track.duration) ? track.duration : (audio ? audio.duration : 0)),
         isStreamUrl: !!(audio && audio.src && audio.src.includes('/local-media')),
@@ -472,6 +528,7 @@ class AuraDiagnostics {
     text += `Artist:   ${diag.track.artist}\n`;
     text += `Format:   ${diag.track.format}\n`;
     text += `Duration: ${diag.track.durationFormatted} (${diag.track.durationSec}s)\n`;
+    text += `Location: ${diag.track.location}\n`;
     text += `Storage:  ${diag.track.isBlobUrl ? 'In-Memory Blob URL' : (diag.track.isStreamUrl ? 'Android SAF /local-media Stream' : 'Direct URL')}\n\n`;
 
     text += `[AUDIO ENGINE STATUS]\n`;
@@ -519,13 +576,23 @@ class AuraDiagnostics {
 
     const recent = this.logs.slice(-80);
     recent.forEach((item) => {
-      text += `[${item.time}] [${item.level.padEnd(5)}] [${item.category}] ${item.message}\n`;
+      const parts = this.getLogDateTimeParts(item);
+      text += `[${parts.full}] [${item.level.padEnd(5)}] [${item.category}] ${item.message}\n`;
       if (item.details && Object.keys(item.details).length > 0 && item.level === 'ERROR') {
         try {
           text += `    Details: ${JSON.stringify(item.details)}\n`;
         } catch (ignored) {}
       }
     });
+
+    if (diag.native && Array.isArray(diag.native.nativeLogs) && diag.native.nativeLogs.length > 0) {
+      text += `\n====================================================\n`;
+      text += `           NATIVE ANDROID SYSTEM LOGS (Last ${Math.min(50, diag.native.nativeLogs.length)})\n`;
+      text += `====================================================\n`;
+      diag.native.nativeLogs.slice(-50).forEach(logEntry => {
+        text += `${logEntry}\n`;
+      });
+    }
 
     return text;
   }
@@ -718,7 +785,15 @@ class AuraDiagnostics {
     const elBatteryOpt = document.getElementById('diag-battery-opt');
     const btnFixBattery = document.getElementById('diag-btn-fix-battery');
 
-    if (elVis) elVis.textContent = diag.system.visibility.toUpperCase();
+    if (elVis) {
+      const visState = (diag.system.visibility || 'visible').toUpperCase();
+      elVis.textContent = visState;
+      if (visState === 'VISIBLE') {
+        elVis.className = 'diag-status-pill-small pill-cyan';
+      } else {
+        elVis.className = 'diag-status-pill-small pill-purple';
+      }
+    }
     
     const elCrashlytics = document.getElementById('diag-crashlytics-status');
     if (elCrashlytics) {
@@ -737,7 +812,9 @@ class AuraDiagnostics {
 
     if (diag.native) {
       if (elWakeLock) {
-        elWakeLock.textContent = diag.native.isActivityWakeLockHeld ? 'HELD' : 'None';
+        const isHeld = !!(diag.native.isActivityWakeLockHeld || diag.native.isServiceWakeLockHeld);
+        elWakeLock.textContent = isHeld ? 'HELD' : 'RELEASED';
+        elWakeLock.className = isHeld ? 'diag-status-pill-small pill-green' : 'diag-status-pill-small pill-muted';
       }
       if (elBatteryOpt) {
         const isOpt = diag.native.isIgnoringBatteryOptimizations;
@@ -748,7 +825,10 @@ class AuraDiagnostics {
         }
       }
     } else {
-      if (elWakeLock) elWakeLock.textContent = 'Browser';
+      if (elWakeLock) {
+        elWakeLock.textContent = 'BROWSER';
+        elWakeLock.className = 'diag-status-pill-small pill-muted';
+      }
       if (elBatteryOpt) elBatteryOpt.textContent = 'Web Browser Standard';
       if (btnFixBattery) btnFixBattery.style.display = 'none';
     }
@@ -826,12 +906,16 @@ class AuraDiagnostics {
     else if (isWarn) badgeClass = 'badge-warning';
     else if (isHeartbeat) badgeClass = 'badge-heartbeat';
 
+    const parts = this.getLogDateTimeParts(item);
     const escapedMsg = this.escapeHTML(item.message);
     const hasDetails = item.details && Object.keys(item.details).length > 0;
 
     return `
       <div class="diag-log-row log-${levelClass}">
-        <span class="diag-log-time">${item.time}</span>
+        <span class="diag-log-time" title="${parts.full}">
+          <span class="diag-log-date">${parts.date}</span>
+          <span class="diag-log-clock">${parts.time}</span>
+        </span>
         <span class="diag-log-badge ${badgeClass}">${item.level}</span>
         <span class="diag-log-cat">[${item.category}]</span>
         <span class="diag-log-msg">${escapedMsg}</span>

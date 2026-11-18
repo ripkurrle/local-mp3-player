@@ -9,7 +9,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,7 +27,7 @@
     <main class="mobile-shell" id="mobile-shell">
 
       <!-- App Header & Navigation Toolbar -->
-      <section class="app-header">
+      <section class="app-header" id="app-header">
         <div class="header-top-row">
           <div class="brand-wrapper">
             <div class="brand-icon-box">
@@ -49,7 +51,7 @@
         </div>
 
         <!-- Search Bar -->
-        <div class="search-container">
+        <div class="search-container" id="search-container">
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -59,7 +61,7 @@
         </div>
 
         <!-- Filter Chips Row -->
-        <div class="filter-chips-row">
+        <div class="filter-chips-row" id="filter-chips-row">
           <button class="filter-chip active" data-filter="all">All Tracks</button>
           <button class="filter-chip" data-filter="fav">Favorites ❤️</button>
           <button class="filter-chip" data-filter="recent">Recently Added</button>
@@ -84,7 +86,7 @@
             <h2 class="empty-title">Your Library is Empty</h2>
             <p class="empty-desc">Tap below to load local MP3 files or music folders from your device storage.</p>
             <div class="empty-actions-group">
-              <button class="primary-action-btn" onclick="document.getElementById('file-input-files').click()">
+              <button class="primary-action-btn" onclick="auraApp.openFilePicker()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="17 8 12 3 7 8"></polyline>
@@ -92,7 +94,7 @@
                 </svg>
                 Select MP3 Files
               </button>
-              <button class="secondary-action-btn" onclick="document.getElementById('file-input-folder').click()">
+              <button class="secondary-action-btn" onclick="auraApp.openFolderPicker()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
@@ -204,12 +206,12 @@
                   </div>
                   <input type="range" class="fx-slider" id="bass-boost-slider" min="0" max="10" step="0.5" value="0">
                 </div>
-                <div class="fx-card">
+                <div class="fx-card" id="eq-diagnostics-card" style="cursor:pointer;" title="Tap to open Diagnostics Monitor">
                   <div class="fx-title">
-                    <span>Visualizer Style</span>
-                    <span style="color:var(--cyan-bright)">Active</span>
+                    <span>Engine Telemetry</span>
+                    <span style="color:var(--cyan-bright)">Active Monitor</span>
                   </div>
-                  <div style="font-size:11px; color:#8fa0be; margin-top:4px;">Toggle in player sheet</div>
+                  <div style="font-size:11px; color:#8fa0be; margin-top:4px;">Tap to view runtime buffer & overnight logs</div>
                 </div>
               </div>
 
@@ -336,6 +338,11 @@
             <div class="vinyl-spindle-hole"></div>
           </div>
 
+          <div class="skip-feedback-bubble" id="skip-feedback-bubble">
+            <span class="skip-feedback-icon" id="skip-feedback-icon">⟲</span>
+            <span class="skip-feedback-text" id="skip-feedback-text">10s</span>
+          </div>
+
           <button class="visualizer-mode-toggle" id="viz-mode-toggle" title="Switch Visualizer Style">BARS</button>
         </div>
 
@@ -361,6 +368,9 @@
           </div>
           <div class="time-row">
             <span id="time-current">0:00</span>
+            <div class="scrub-quick-nudges">
+              <button class="nudge-btn" id="nudge-back-10" title="Skip back 10 seconds" aria-label="Rewind 10 Seconds">⟲ 10s</button>
+            </div>
             <span id="time-total">0:00</span>
           </div>
         </div>
@@ -376,7 +386,7 @@
 
         <!-- Main Controls -->
         <div class="core-controls-row">
-          <button class="ctrl-btn" id="btn-shuffle" title="Shuffle">
+          <button class="ctrl-btn" id="btn-shuffle" title="Shuffle" aria-label="Shuffle">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="16 3 21 3 21 8"></polyline>
               <line x1="4" y1="20" x2="21" y2="3"></line>
@@ -386,25 +396,41 @@
             </svg>
           </button>
 
-          <button class="ctrl-btn" id="btn-prev" title="Previous">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="ctrl-btn" id="btn-prev" title="Previous Track" aria-label="Previous Track">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="19 20 9 12 19 4 19 20"></polygon>
               <line x1="5" y1="19" x2="5" y2="5"></line>
             </svg>
           </button>
 
-          <button class="main-play-pause-btn" id="btn-main-play" title="Play/Pause">
+          <button class="ctrl-btn ctrl-btn-seek" id="btn-seek-back" title="Rewind 10 Seconds" aria-label="Rewind 10 Seconds">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 4v6h6"></path>
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              <text x="12" y="15" font-size="7" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" text-anchor="middle" fill="currentColor" stroke="none">10</text>
+            </svg>
+          </button>
+
+          <button class="main-play-pause-btn" id="btn-main-play" title="Play/Pause" aria-label="Play or Pause">
             <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
           </button>
 
-          <button class="ctrl-btn" id="btn-next" title="Next">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="ctrl-btn ctrl-btn-seek" id="btn-seek-fwd" title="Fast Forward 10 Seconds" aria-label="Fast Forward 10 Seconds">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              <text x="12" y="15" font-size="7" font-weight="800" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" text-anchor="middle" fill="currentColor" stroke="none">10</text>
+            </svg>
+          </button>
+
+          <button class="ctrl-btn" id="btn-next" title="Next Track" aria-label="Next Track">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="5 4 15 12 5 20 5 4"></polygon>
               <line x1="19" y1="5" x2="19" y2="19"></line>
             </svg>
           </button>
 
-          <button class="ctrl-btn active" id="btn-repeat" title="Repeat">
+          <button class="ctrl-btn active" id="btn-repeat" title="Repeat Mode" aria-label="Repeat Mode">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="17 1 21 5 17 9"></polyline>
               <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
@@ -450,7 +476,7 @@
               </div>
               <div class="import-opt-text">
                 <h4>Select Audio Files</h4>
-                <p>Choose MP3, WAV, M4A, FLAC, or OGG tracks</p>
+                <p>Direct system load (no duplicate storage, ideal for podcasts & large files)</p>
               </div>
             </div>
 
@@ -459,8 +485,8 @@
                 <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
               </div>
               <div class="import-opt-text">
-                <h4>Import Entire Music Folder</h4>
-                <p>Import all audio files from a directory at once</p>
+                <h4>Import Entire Folder</h4>
+                <p>Link an entire directory directly without duplicating storage</p>
               </div>
             </div>
 
@@ -469,8 +495,8 @@
                 <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               </div>
               <div class="import-opt-text">
-                <h4>Load High-Fi Demo Tracks</h4>
-                <p>Synthwave, Ambient Space, and Lo-Fi Chill</p>
+                <h4>Load Audio Format Test Suite</h4>
+                <p>8 tracks: MP3, M4A, FLAC, OGG, OPUS, WAV, AAC, WEBA</p>
               </div>
             </div>
 
@@ -531,6 +557,19 @@
             <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
               <span style="color:#7b8fae;">Format & Storage</span>
               <strong style="color:var(--cyan-bright);"><span id="info-format">-</span> • <span id="info-size">-</span></strong>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#7b8fae;">Device File Location</span>
+                <button class="info-copy-btn" id="info-copy-path-btn" title="Copy file location to clipboard">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <div class="info-path-box" id="info-location">-</div>
             </div>
           </div>
         </div>
@@ -601,9 +640,13 @@
             <button class="modal-close-btn" id="add-songs-modal-close-btn">&times;</button>
           </div>
 
-          <div class="search-bar-wrap" style="margin:0;">
-            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="add-songs-search-input" class="search-input" placeholder="Filter songs by title or artist...">
+          <div class="search-container" style="margin:0; position:relative; width:100%;">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="add-songs-search-input" class="search-input" placeholder="Filter songs by title or artist..." autocomplete="off">
+            <button class="search-clear-btn" id="add-songs-search-clear">&times;</button>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; padding:0 4px; font-size:12px;">
@@ -736,7 +779,118 @@
         </div>
       </div>
 
-      <!-- 6. In-App Confirmation Action Modal -->
+      <!-- 6. Runtime Audio Diagnostics Modal -->
+      <div class="modal-overlay" id="diagnostics-modal" role="dialog" aria-modal="true">
+        <div class="modal-card-bottom diag-modal-card">
+          <div class="modal-header-row diag-header-row">
+            <div class="diag-header-title-box">
+              <div class="diag-title-row">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-bright)" stroke-width="2.2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                <h3>Audio Diagnostics & Telemetry</h3>
+              </div>
+              <span class="diag-status-badge badge-neutral" id="diag-status-pill">MONITORING</span>
+            </div>
+            <button class="modal-close-btn" id="diag-close-btn">&times;</button>
+          </div>
+
+          <!-- Diagnostics Dashboard Grid -->
+          <div class="diag-dashboard-grid">
+            <!-- Metric 1: Playback State -->
+            <div class="diag-metric-card">
+              <div class="diag-metric-header">
+                <span class="diag-metric-label">PLAYBACK ENGINE</span>
+                <span class="diag-metric-sub" id="diag-playback-state">PAUSED</span>
+              </div>
+              <div class="diag-metric-main" id="diag-cur-dur">0:00 / 0:00</div>
+              <div class="diag-metric-footer" id="diag-track-title">No Track Loaded</div>
+            </div>
+
+            <!-- Metric 2: Stream & Buffer -->
+            <div class="diag-metric-card">
+              <div class="diag-metric-header">
+                <span class="diag-metric-label">STREAM & BUFFER</span>
+                <span class="diag-metric-sub" id="diag-ready-state">0 (HAVE_NOTHING)</span>
+              </div>
+              <div class="diag-metric-main" id="diag-buffer-ahead">+0s buffered</div>
+              <div class="diag-metric-footer" id="diag-net-state">Network: 0 (EMPTY)</div>
+            </div>
+
+            <!-- Metric 3: Web Audio & Memory -->
+            <div class="diag-metric-card">
+              <div class="diag-metric-header">
+                <span class="diag-metric-label">AUDIO CONTEXT</span>
+                <span class="diag-metric-sub" id="diag-ctx-state">RUNNING</span>
+              </div>
+              <div class="diag-metric-main" id="diag-heap-used">-- MB Heap</div>
+              <div class="diag-metric-footer">Keep-Alive Buffer Loop Active</div>
+            </div>
+
+            <!-- Metric 4: Power & Android Background -->
+            <div class="diag-metric-card">
+              <div class="diag-metric-header">
+                <span class="diag-metric-label">POWER / CRASHLYTICS</span>
+                <span class="diag-metric-sub" id="diag-crashlytics-status">CRASHLYTICS ACTIVE</span>
+              </div>
+              <div class="diag-metric-main" id="diag-battery-opt">UNRESTRICTED</div>
+              <div class="diag-metric-footer">
+                <div class="diag-footer-subgroup">
+                  <span class="diag-footer-item">WakeLock: <span class="diag-status-pill-small pill-green" id="diag-wakelock">HELD</span></span>
+                  <span class="diag-footer-divider">•</span>
+                  <span class="diag-footer-item">Screen: <span class="diag-status-pill-small pill-cyan" id="diag-visibility">VISIBLE</span></span>
+                </div>
+                <button class="diag-mini-fix-btn" id="diag-btn-fix-battery" onclick="if(window.auraApp &amp;&amp; window.auraApp.requestBatteryWhitelist){window.auraApp.requestBatteryWhitelist();}else if(window.AndroidBridge &amp;&amp; window.AndroidBridge.requestIgnoreBatteryOptimizations){window.AndroidBridge.requestIgnoreBatteryOptimizations();}" style="display:none;">Whitelist Battery</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="diag-actions-row">
+            <button class="diag-act-btn primary" id="diag-save-report-btn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>Save Diagnostic Report to File</span>
+            </button>
+            <div class="diag-actions-subrow">
+              <button class="diag-act-btn secondary" id="diag-nudge-btn" title="Nudge audio engine if stuck">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Nudge Playback</span>
+              </button>
+              <button class="diag-act-btn danger" id="diag-clear-logs-btn" title="Clear log history">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>Clear</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Log Viewer Section -->
+          <div class="diag-logs-section">
+            <div class="diag-logs-header">
+              <div class="diag-logs-title">RUNTIME EVENT TIMELINE</div>
+              <div class="diag-filter-chips">
+                <button class="diag-filter-chip active" data-filter="all">All</button>
+                <button class="diag-filter-chip" data-filter="errors">Errors / Warnings</button>
+                <button class="diag-filter-chip" data-filter="audio">Audio</button>
+                <button class="diag-filter-chip" data-filter="heartbeat">Heartbeats</button>
+                <button class="diag-filter-chip" data-filter="power">Power</button>
+              </div>
+            </div>
+            <div class="diag-log-container" id="diag-log-container"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 7. In-App Confirmation Action Modal -->
       <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true">
         <div class="modal-card-bottom confirm-card-bottom">
           <div class="confirm-icon-box" id="confirm-icon-box">
@@ -760,7 +914,7 @@
 
       <!-- Hidden Native File Inputs -->
       <input type="file" id="file-input-files" multiple accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.weba,.opus,.wma,.mid,.midi,.ape,.aiff,.alac" style="display:none;">
-      <input type="file" id="file-input-folder" webkitdirectory directory multiple style="display:none;">
+      <input type="file" id="file-input-folder" webkitdirectory directory multiple accept="directory/*,folder/*" style="display:none;">
 
     </main>
   </div>
@@ -768,6 +922,7 @@
   <!-- JavaScript Modules -->
   <script src="id3-parser.js"></script>
   <script src="db.js"></script>
+  <script src="diagnostics.js"></script>
   <script src="audio-engine.js"></script>
   <script src="app.js"></script>
   <script>

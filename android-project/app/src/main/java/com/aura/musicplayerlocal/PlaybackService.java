@@ -17,6 +17,7 @@ public class PlaybackService extends Service {
     public static final String ACTION_START = "com.aura.musicplayerlocal.START_PLAYBACK";
     public static final String ACTION_STOP = "com.aura.musicplayerlocal.STOP_PLAYBACK";
     public static final String EXTRA_NOTIFICATION = "extra_notification";
+    public static final String EXTRA_IS_PLAYING = "extra_is_playing";
     private static final int NOTIFICATION_ID = 1001;
 
     private static volatile boolean serviceRunning = false;
@@ -62,6 +63,8 @@ public class PlaybackService extends Service {
                 notification = intent.getParcelableExtra(EXTRA_NOTIFICATION);
             }
 
+            boolean isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, true);
+
             if (notification != null) {
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -69,19 +72,28 @@ public class PlaybackService extends Service {
                     } else {
                         startForeground(NOTIFICATION_ID, notification);
                     }
-                    Log.d("AuraPlayer", "PlaybackService started in foreground with mediaPlayback type.");
-                    MainActivity.logNativeEvent("PlaybackService", "startForeground mediaPlayback active");
+                    Log.d("AuraPlayer", "PlaybackService started in foreground with mediaPlayback type. (isPlaying=" + isPlaying + ")");
+                    MainActivity.logNativeEvent("PlaybackService", "startForeground mediaPlayback active (playing=" + isPlaying + ")");
                 } catch (Exception e) {
                     Log.e("AuraPlayer", "Error starting foreground service", e);
                     MainActivity.logNativeEvent("PlaybackService", "startForeground error: " + e.getMessage());
                 }
             }
 
-            if (wakeLock != null && !wakeLock.isHeld()) {
-                wakeLock.acquire();
-                serviceWakeLockHeld = true;
-                Log.d("AuraPlayer", "Playback WakeLock acquired in PlaybackService (CPU will not sleep while playing)");
-                MainActivity.logNativeEvent("PlaybackService", "WakeLock acquired");
+            if (isPlaying) {
+                if (wakeLock != null && !wakeLock.isHeld()) {
+                    wakeLock.acquire();
+                    serviceWakeLockHeld = true;
+                    Log.d("AuraPlayer", "Playback WakeLock acquired in PlaybackService (CPU will not sleep while playing)");
+                    MainActivity.logNativeEvent("PlaybackService", "WakeLock acquired");
+                }
+            } else {
+                if (wakeLock != null && wakeLock.isHeld()) {
+                    wakeLock.release();
+                    serviceWakeLockHeld = false;
+                    Log.d("AuraPlayer", "Playback WakeLock released in PlaybackService (Paused state)");
+                    MainActivity.logNativeEvent("PlaybackService", "WakeLock released (paused)");
+                }
             }
         } else if (ACTION_STOP.equals(action)) {
             if (wakeLock != null && wakeLock.isHeld()) {

@@ -93,9 +93,9 @@ class AuraApp {
 
     this.setupMediaSession();
 
-    // Auto-dismiss notification if document/app becomes hidden while genuinely not actively playing
+    // Auto-dismiss notification only if no track is loaded when document becomes hidden
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && !this.isPlaying && (!this.audioEngine || !this.audioEngine.isChangingTrack) && window.AndroidBridge && typeof window.AndroidBridge.hideNotification === 'function') {
+      if (document.hidden && !this.currentTrack && window.AndroidBridge && typeof window.AndroidBridge.hideNotification === 'function') {
         try {
           window.AndroidBridge.hideNotification();
         } catch (e) {}
@@ -108,11 +108,15 @@ class AuraApp {
       // Views & navigation
       navButtons: document.querySelectorAll('.nav-item-btn'),
       viewSections: document.querySelectorAll('.view-section'),
+      appContent: document.querySelector('.app-content'),
       
       // Header
+      appHeader: document.getElementById('app-header') || document.querySelector('.app-header'),
       libraryStat: document.querySelector('.library-stat'),
+      searchContainer: document.getElementById('search-container') || document.querySelector('.search-container'),
       searchBar: document.getElementById('search-input'),
       searchClear: document.getElementById('search-clear'),
+      filterChipsRow: document.getElementById('filter-chips-row') || document.querySelector('.filter-chips-row'),
       filterChips: document.querySelectorAll('.filter-chip'),
       importBtn: document.getElementById('import-trigger-btn'),
       
@@ -175,7 +179,6 @@ class AuraApp {
 
       // Quick Nudge Buttons & Feedback
       nudgeBack10: document.getElementById('nudge-back-10'),
-      nudgeFwd10: document.getElementById('nudge-fwd-10'),
       skipFeedbackBubble: document.getElementById('skip-feedback-bubble'),
       skipFeedbackIcon: document.getElementById('skip-feedback-icon'),
       skipFeedbackText: document.getElementById('skip-feedback-text'),
@@ -191,18 +194,16 @@ class AuraApp {
       btnTimer: document.getElementById('btn-timer'),
       btnInfo: document.getElementById('btn-info'),
       btnEqShortcut: document.getElementById('btn-eq-shortcut'),
-      btnOpenDiagnostics: document.getElementById('btn-open-diagnostics'),
-      btnSecDiagnostics: document.getElementById('btn-sec-diagnostics'),
       eqDiagnosticsCard: document.getElementById('eq-diagnostics-card'),
 
       // Modals
       importModal: document.getElementById('import-modal'),
       timerModal: document.getElementById('timer-modal'),
       infoModal: document.getElementById('info-modal'),
+      infoCopyPathBtn: document.getElementById('info-copy-path-btn'),
       diagnosticsModal: document.getElementById('diagnostics-modal'),
       diagCloseBtn: document.getElementById('diag-close-btn'),
       diagSaveReportBtn: document.getElementById('diag-save-report-btn') || document.getElementById('diag-copy-report-btn'),
-      diagCrashlyticsTestBtn: document.getElementById('diag-crashlytics-test-btn'),
       diagClearLogsBtn: document.getElementById('diag-clear-logs-btn'),
       diagNudgeBtn: document.getElementById('diag-nudge-btn'),
       diagBtnFixBattery: document.getElementById('diag-btn-fix-battery'),
@@ -415,17 +416,11 @@ class AuraApp {
       });
     }
 
-    // Scrubber Quick Nudges (⟲ 10s and 10s ⟳)
+    // Scrubber Quick Nudges (⟲ 10s)
     if (this.dom.nudgeBack10) {
       this.dom.nudgeBack10.addEventListener('click', (e) => {
         e.stopPropagation();
         this.skipSeconds(-10);
-      });
-    }
-    if (this.dom.nudgeFwd10) {
-      this.dom.nudgeFwd10.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.skipSeconds(10);
       });
     }
 
@@ -578,6 +573,29 @@ class AuraApp {
 
     // Track Info Modal
     this.dom.btnInfo.addEventListener('click', () => this.openTrackInfoModal());
+    if (this.dom.infoCopyPathBtn) {
+      this.dom.infoCopyPathBtn.addEventListener('click', async () => {
+        const locEl = document.getElementById('info-location');
+        const text = locEl ? locEl.textContent : '';
+        if (text && text !== '-') {
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+            }
+            this.showToast('File location copied to clipboard!');
+          } catch (e) {
+            this.showToast('Could not copy location');
+          }
+        }
+      });
+    }
 
     // Diagnostics Modal Openers
     const handleOpenDiagnostics = (e) => {
@@ -592,12 +610,6 @@ class AuraApp {
       }
     };
 
-    if (this.dom.btnOpenDiagnostics) {
-      this.dom.btnOpenDiagnostics.addEventListener('click', handleOpenDiagnostics);
-    }
-    if (this.dom.btnSecDiagnostics) {
-      this.dom.btnSecDiagnostics.addEventListener('click', handleOpenDiagnostics);
-    }
     if (this.dom.eqDiagnosticsCard) {
       this.dom.eqDiagnosticsCard.addEventListener('click', handleOpenDiagnostics);
     }
@@ -633,21 +645,6 @@ class AuraApp {
         }
       });
     }
-    if (this.dom.diagCrashlyticsTestBtn) {
-      this.dom.diagCrashlyticsTestBtn.addEventListener('click', () => {
-        if (!window.AndroidBridge) {
-          this.showToast('Crashlytics testing requires running inside the Android app');
-          return;
-        }
-        if (confirm('Firebase Crashlytics Test Crash:\n\nPer the Firebase guide, this button forces a crash (RuntimeException) to verify Crashlytics.\n\nIMPORTANT: After the app closes, please RE-OPEN the app so Crashlytics can upload the report to your Firebase Console.\n\nForce test crash now?')) {
-          if (window.auraDiagnostics) {
-            window.auraDiagnostics.triggerCrashlyticsTest(true);
-          } else if (window.AndroidBridge.testCrashlyticsCrash) {
-            window.AndroidBridge.testCrashlyticsCrash();
-          }
-        }
-      });
-    }
     if (this.dom.diagClearLogsBtn) {
       this.dom.diagClearLogsBtn.addEventListener('click', () => {
         if (window.auraDiagnostics) {
@@ -665,12 +662,12 @@ class AuraApp {
       });
     }
     if (this.dom.diagBtnFixBattery) {
-      this.dom.diagBtnFixBattery.addEventListener('click', () => {
-        if (window.AndroidBridge && typeof window.AndroidBridge.requestIgnoreBatteryOptimizations === 'function') {
-          window.AndroidBridge.requestIgnoreBatteryOptimizations();
-        } else {
-          this.showToast('Battery optimization management is Android-specific');
+      this.dom.diagBtnFixBattery.addEventListener('click', (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
         }
+        this.requestBatteryWhitelist();
       });
     }
     if (this.dom.diagFilterChips) {
@@ -927,6 +924,14 @@ class AuraApp {
 
   // --- File Import & Processing ---
 
+  requestBatteryWhitelist() {
+    if (window.AndroidBridge && typeof window.AndroidBridge.requestIgnoreBatteryOptimizations === 'function') {
+      window.AndroidBridge.requestIgnoreBatteryOptimizations();
+    } else {
+      this.showToast('Battery optimization management is Android-specific');
+    }
+  }
+
   openFilePicker() {
     if (window.AndroidBridge && typeof window.AndroidBridge.openFilePicker === 'function') {
       window.AndroidBridge.openFilePicker();
@@ -1010,6 +1015,17 @@ class AuraApp {
           }
         }
 
+        let location = file.webkitRelativePath || file.name;
+        if (window.AndroidBridge) {
+          if (contentUri && typeof window.AndroidBridge.getFilePathForUri === 'function') {
+            const resolved = window.AndroidBridge.getFilePathForUri(contentUri);
+            if (resolved) location = resolved;
+          } else if (typeof window.AndroidBridge.getFilePathForFilename === 'function') {
+            const resolved = window.AndroidBridge.getFilePathForFilename(file.name);
+            if (resolved) location = resolved;
+          }
+        }
+
         const trackObj = {
           id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
           title: metadata.title,
@@ -1019,6 +1035,8 @@ class AuraApp {
           genre: metadata.genre,
           format: metadata.format || (ext ? ext.toUpperCase() : 'AUDIO'),
           size: file.size,
+          location: location,
+          filePath: location,
           pictureUrl: metadata.pictureUrl,
           fileBlob: fileBlob, // Store normalized Blob in IndexedDB
           url: streamUrl,
@@ -1176,6 +1194,11 @@ class AuraApp {
       }
     ];
 
+    demos.forEach(d => {
+      d.location = `Built-in Demo (${d.url})`;
+      d.filePath = d.url;
+    });
+
     // Refresh or add demo tracks
     const toSave = [];
     for (const demo of demos) {
@@ -1248,7 +1271,9 @@ class AuraApp {
 
     // Stats
     const totalCount = this.tracks.length;
-    this.dom.libraryStat.textContent = `${totalCount} local ${totalCount === 1 ? 'track' : 'tracks'}`;
+    if (this.dom.libraryStat && (this.activeView === 'tracks' || !this.activeView)) {
+      this.dom.libraryStat.textContent = `${totalCount} local ${totalCount === 1 ? 'track' : 'tracks'}`;
+    }
     this.dom.tracksCountBadge.textContent = `${list.length} tracks`;
 
     // Show/hide empty state
@@ -1284,7 +1309,7 @@ class AuraApp {
             <span></span><span></span><span></span>
           </div>
         </div>
-        <div class="track-details-col">
+        <div class="track-details-col" title="Location: ${this.escapeHTML(track.location || track.filePath || (track.fileBlob && track.fileBlob.name) || track.url || 'Device Storage')}">
           <div class="track-title">${this.escapeHTML(track.title)}</div>
           <div class="track-meta-row">
             <span class="track-artist">${this.escapeHTML(track.artist)}</span>
@@ -1302,6 +1327,13 @@ class AuraApp {
           <button class="track-add-pl-btn" data-id="${track.id}" title="Add to Playlist">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button class="track-info-row-btn" data-id="${track.id}" title="View track metadata & file location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
           </button>
           <button class="track-del-btn" data-id="${track.id}" title="Remove track from library">
@@ -1325,7 +1357,7 @@ class AuraApp {
 
       // Click to play
       row.addEventListener('click', (e) => {
-        if (e.target.closest('.track-fav-btn') || e.target.closest('.track-add-pl-btn') || e.target.closest('.track-del-btn')) return;
+        if (e.target.closest('.track-fav-btn') || e.target.closest('.track-add-pl-btn') || e.target.closest('.track-info-row-btn') || e.target.closest('.track-del-btn')) return;
         this.playTrack(index);
       });
 
@@ -1335,6 +1367,15 @@ class AuraApp {
         e.stopPropagation();
         this.toggleFavorite(track.id);
       });
+
+      // Track metadata & location info
+      const infoBtn = row.querySelector('.track-info-row-btn');
+      if (infoBtn) {
+        infoBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.openTrackInfoModal(track);
+        });
+      }
 
       // Add to playlist
       const addPlBtn = row.querySelector('.track-add-pl-btn');
@@ -2529,8 +2570,59 @@ class AuraApp {
     });
 
     this.dom.viewSections.forEach(sec => {
-      sec.classList.toggle('active-view', sec.id === `view-${viewName}`);
+      const isActive = sec.id === `view-${viewName}`;
+      sec.classList.toggle('active-view', isActive);
+      sec.style.display = isActive ? 'block' : 'none';
     });
+
+    if (this.dom.appContent) {
+      this.dom.appContent.scrollTop = 0;
+    }
+
+    const totalCount = this.tracks ? this.tracks.length : 0;
+
+    if (viewName === 'eq') {
+      if (this.dom.searchContainer) this.dom.searchContainer.style.display = 'none';
+      if (this.dom.filterChipsRow) this.dom.filterChipsRow.style.display = 'none';
+      if (this.dom.importBtn) this.dom.importBtn.style.display = 'none';
+      if (this.dom.appHeader) this.dom.appHeader.classList.add('header-eq-mode');
+      if (this.dom.libraryStat) this.dom.libraryStat.textContent = 'Studio Equalizer & DSP';
+    } else if (viewName === 'playlists') {
+      if (this.dom.searchContainer) this.dom.searchContainer.style.display = 'none';
+      if (this.dom.filterChipsRow) this.dom.filterChipsRow.style.display = 'none';
+      if (this.dom.importBtn) this.dom.importBtn.style.display = 'none';
+      if (this.dom.appHeader) this.dom.appHeader.classList.remove('header-eq-mode');
+      if (this.dom.libraryStat) {
+        const pCount = (this.playlists ? this.playlists.length : 0) + 1;
+        this.dom.libraryStat.textContent = `${pCount} ${pCount === 1 ? 'playlist' : 'playlists'}`;
+      }
+    } else if (viewName === 'albums') {
+      if (this.dom.searchContainer) this.dom.searchContainer.style.display = 'block';
+      if (this.dom.filterChipsRow) this.dom.filterChipsRow.style.display = 'none';
+      if (this.dom.importBtn) this.dom.importBtn.style.display = 'flex';
+      if (this.dom.appHeader) this.dom.appHeader.classList.remove('header-eq-mode');
+      if (this.dom.libraryStat) {
+        const albumsCount = new Set((this.tracks || []).map(t => t.album || 'Unknown Album')).size;
+        this.dom.libraryStat.textContent = `${albumsCount} ${albumsCount === 1 ? 'album' : 'albums'}`;
+      }
+    } else if (viewName === 'artists') {
+      if (this.dom.searchContainer) this.dom.searchContainer.style.display = 'block';
+      if (this.dom.filterChipsRow) this.dom.filterChipsRow.style.display = 'none';
+      if (this.dom.importBtn) this.dom.importBtn.style.display = 'flex';
+      if (this.dom.appHeader) this.dom.appHeader.classList.remove('header-eq-mode');
+      if (this.dom.libraryStat) {
+        const artistsCount = new Set((this.tracks || []).map(t => t.artist || 'Unknown Artist')).size;
+        this.dom.libraryStat.textContent = `${artistsCount} ${artistsCount === 1 ? 'artist' : 'artists'}`;
+      }
+    } else { // 'tracks'
+      if (this.dom.searchContainer) this.dom.searchContainer.style.display = 'block';
+      if (this.dom.filterChipsRow) this.dom.filterChipsRow.style.display = 'flex';
+      if (this.dom.importBtn) this.dom.importBtn.style.display = 'flex';
+      if (this.dom.appHeader) this.dom.appHeader.classList.remove('header-eq-mode');
+      if (this.dom.libraryStat) {
+        this.dom.libraryStat.textContent = `${totalCount} local ${totalCount === 1 ? 'track' : 'tracks'}`;
+      }
+    }
   }
 
   openPlayerSheet() {
@@ -2616,17 +2708,40 @@ class AuraApp {
     });
   }
 
-  openTrackInfoModal() {
-    const t = this.currentTrack;
-    if (!t) return;
+  openTrackInfoModal(targetTrack = null) {
+    const t = targetTrack || this.currentTrack;
+    if (!t) {
+      this.showToast('No track selected');
+      return;
+    }
 
-    document.getElementById('info-title').textContent = t.title;
-    document.getElementById('info-artist').textContent = t.artist;
-    document.getElementById('info-album').textContent = t.album || 'Unknown';
+    document.getElementById('info-title').textContent = t.title || 'Untitled';
+    document.getElementById('info-artist').textContent = t.artist || 'Unknown Artist';
+    document.getElementById('info-album').textContent = t.album || 'Unknown Album';
     document.getElementById('info-genre').textContent = t.genre || 'Music';
     document.getElementById('info-year').textContent = t.year || 'N/A';
     document.getElementById('info-format').textContent = t.format || 'AUDIO';
     document.getElementById('info-size').textContent = t.size ? `${(t.size / (1024 * 1024)).toFixed(2)} MB` : 'N/A';
+
+    let location = t.location || t.filePath;
+    if (!location || location === t.title) {
+      if (t.contentUri && window.AndroidBridge && typeof window.AndroidBridge.getFilePathForUri === 'function') {
+        const resolved = window.AndroidBridge.getFilePathForUri(t.contentUri);
+        if (resolved) location = resolved;
+      } else if (t.fileBlob && t.fileBlob.name && window.AndroidBridge && typeof window.AndroidBridge.getFilePathForFilename === 'function') {
+        const resolved = window.AndroidBridge.getFilePathForFilename(t.fileBlob.name);
+        if (resolved) location = resolved;
+      }
+    }
+    if (!location) {
+      location = (t.fileBlob && t.fileBlob.name) ? t.fileBlob.name : (t.url || 'Device Storage / Local IndexedDB');
+    }
+
+    const locEl = document.getElementById('info-location');
+    if (locEl) {
+      locEl.textContent = location;
+      locEl.title = location;
+    }
 
     this.openModal(this.dom.infoModal);
   }

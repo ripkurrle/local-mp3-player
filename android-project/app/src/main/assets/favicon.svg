@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Aura Signature Diagonal Gradient -->
+    <linearGradient id="aura-accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="30%" stop-color="#00c2ff"/>
+      <stop offset="60%" stop-color="#4784ff"/>
+      <stop offset="82%" stop-color="#8247f2"/>
+      <stop offset="100%" stop-color="#9b51e0"/>
+    </linearGradient>
+
+    <!-- Top-Left Ambient Specular Light -->
+    <radialGradient id="specular-light" cx="22%" cy="18%" r="75%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Bottom-Right Depth Vignette -->
+    <radialGradient id="depth-vignette" cx="85%" cy="85%" r="65%">
+      <stop offset="0%" stop-color="#06011a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#06011a" stop-opacity="0.30"/>
+    </radialGradient>
+
+    <!-- Drop Shadow for Musical Glyph -->
+    <filter id="glyph-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#090226" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#090226" flood-opacity="0.30"/>
+    </filter>
+
+    <!-- Subtle Glyph Vertical Gradient -->
+    <linearGradient id="glyph-fill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f0f5ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed 512x512 Canvas (Google Play requirement) -->
+  <rect width="512" height="512" fill="url(#aura-accent-grad)"/>
+  <rect width="512" height="512" fill="url(#specular-light)"/>
+  <rect width="512" height="512" fill="url(#depth-vignette)"/>
+
+  <!-- Concentric Sonic Aura Rings -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <!-- Outer Sonic Wave -->
+    <circle cx="256" cy="256" r="205" stroke-width="2" stroke-opacity="0.12"/>
+    <!-- Middle Sonic Wave with rhythm dots -->
+    <circle cx="256" cy="256" r="172" stroke-width="2.5" stroke-opacity="0.18"/>
+    <!-- Inner Sonic Wave -->
+    <circle cx="256" cy="256" r="140" stroke-width="2" stroke-opacity="0.22"/>
+  </g>
+
+  <!-- Sonic Rhythm Accents along middle ring -->
+  <g fill="#ffffff" fill-opacity="0.35">
+    <circle cx="428" cy="256" r="3.5"/>
+    <circle cx="84" cy="256" r="3.5"/>
+    <circle cx="256" cy="428" r="3.5"/>
+    <circle cx="256" cy="84" r="3.5"/>
+    <circle cx="377" cy="377" r="3.5"/>
+    <circle cx="135" cy="135" r="3.5"/>
+    <circle cx="377" cy="135" r="3.5"/>
+    <circle cx="135" cy="377" r="3.5"/>
+  </g>
+
+  <!-- Signature Musical Glyph (Centered in safe keyline area) -->
+  <g transform="translate(94, 94) scale(13.5)" filter="url(#glyph-shadow)">
+    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" 
+          fill="url(#glyph-fill)"
+          stroke="#ffffff"
+          stroke-width="0.15"
+          stroke-opacity="0.7"/>
+  </g>
+</svg>

@@ -22,6 +22,8 @@ class AudioEngine {
 
     this.isInitialized = false;
     this.currentTrack = null;
+    this.isChangingTrack = false;
+    this._keepAliveNode = null;
     this.visualizerMode = 'bars'; // 'bars' | 'wave' | 'circle'
     this.visualizerCanvas = null;
     this.visualizerCtx = null;
@@ -57,20 +59,93 @@ class AudioEngine {
       }
     });
 
-    this.audio.addEventListener('ended', () => {
-      if (this.onTrackEnd) this.onTrackEnd();
-    });
-
     this.audio.addEventListener('play', () => {
+      this.isChangingTrack = false;
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.info('AUDIO', 'HTML5 Audio play event fired');
+      }
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       if (this.onStateChange) this.onStateChange(true);
       this.startVisualizer();
     });
 
+    this.audio.addEventListener('playing', () => {
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.info('AUDIO', 'HTML5 Audio playing event (playback active and frames flowing)');
+      }
+    });
+
     this.audio.addEventListener('pause', () => {
+      // Never treat track completion or background transition as user pause!
+      if (this.isChangingTrack || this.audio.ended) {
+        return;
+      }
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.warn('AUDIO', `HTML5 Audio pause event fired at ${this.audio.currentTime.toFixed(1)}s (ended=${this.audio.ended})`);
+      }
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused';
+      }
       if (this.onStateChange) this.onStateChange(false);
     });
 
+    this.audio.addEventListener('waiting', () => {
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.warn('STREAM', `HTML5 Audio waiting event (temporary lack of buffered data at ${this.audio.currentTime.toFixed(1)}s)`);
+      }
+    });
+
+    this.audio.addEventListener('stalled', () => {
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.warn('STREAM', `HTML5 Audio stalled event (data fetch stalled by host/network at ${this.audio.currentTime.toFixed(1)}s)`);
+      }
+    });
+
+    this.audio.addEventListener('suspend', () => {
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.info('STREAM', 'HTML5 Audio suspend event (browser media data fetching suspended)');
+      }
+    });
+
+    this.audio.addEventListener('abort', () => {
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.warn('STREAM', 'HTML5 Audio abort event (media loading aborted)');
+      }
+    });
+
+    this.audio.addEventListener('emptied', () => {
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.warn('STREAM', 'HTML5 Audio emptied event (buffer emptied)');
+      }
+    });
+
+    this.audio.addEventListener('ended', () => {
+      this.isChangingTrack = true;
+      const cur = this.audio.currentTime || 0;
+      const dur = this.audio.duration || 0;
+
+      // Check for premature EOF during long tracks
+      if (dur > 60 && cur < (dur - 10)) {
+        if (window.auraDiagnostics) {
+          window.auraDiagnostics.error('AUDIO', `UNEXPECTED PREMATURE EOF DETECTED! Track ended at ${cur.toFixed(1)}s but duration is ${dur.toFixed(1)}s (stopped ${(dur - cur).toFixed(1)}s early)`);
+        }
+      } else {
+        if (window.auraDiagnostics) {
+          window.auraDiagnostics.info('AUDIO', `Track completed normally at ${cur.toFixed(1)}s`);
+        }
+      }
+
+      if (this.onTrackEnd) this.onTrackEnd();
+    });
+
     this.audio.addEventListener('error', (e) => {
+      const errCode = this.audio.error ? this.audio.error.code : 'unknown';
+      const errMsg = this.audio.error ? this.audio.error.message : '';
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.error('AUDIO', `HTML5 Audio error event fired: code=${errCode} message="${errMsg}"`);
+      }
       console.warn('Audio playback error:', e);
       if (this.onError) this.onError(e);
     });
@@ -83,6 +158,17 @@ class AudioEngine {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       this.ctx = new AudioCtx();
+
+      // Monitor AudioContext state transitions (e.g. background suspension)
+      this.ctx.onstatechange = () => {
+        const state = this.ctx ? this.ctx.state : 'null';
+        if (window.auraDiagnostics) {
+          window.auraDiagnostics.log('AUDIO', state === 'running' ? 'INFO' : 'WARN', `AudioContext state changed to: ${state}`);
+        }
+        if (state === 'suspended' && this.audio && !this.audio.paused) {
+          this.resumeContext();
+        }
+      };
 
       this.sourceNode = this.ctx.createMediaElementSource(this.audio);
       this.analyser = this.ctx.createAnalyser();
@@ -136,6 +222,27 @@ class AudioEngine {
     }
   }
 
+  keepAudioContextAlive() {
+    if (!this.ctx) return;
+    try {
+      if (!this._keepAliveNode) {
+        // Continuous inaudible buffer loop keeps Chromium Web Audio thread active in background during transitions
+        const buffer = this.ctx.createBuffer(1, 1, 22050);
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        const silentGain = this.ctx.createGain();
+        silentGain.gain.value = 0.00001;
+        source.connect(silentGain);
+        silentGain.connect(this.ctx.destination);
+        source.start(0);
+        this._keepAliveNode = source;
+      }
+    } catch (e) {
+      console.warn('Could not initialize keepAliveNode:', e);
+    }
+  }
+
   /**
    * Robust fetcher that converts relative/asset URLs into in-memory Blobs.
    * Uses modern fetch() with XMLHttpRequest fallback for Android WebView file:/// protocols.
@@ -166,7 +273,54 @@ class AudioEngine {
     });
   }
 
+  /**
+   * Normalizes audio Blobs to standard MIME types.
+   * In particular, Chromium requires 'audio/mp4' (not 'audio/x-m4a' or 'audio/m4a') to demux M4A/AAC files.
+   */
+  normalizeAudioBlob(blob, format = '', title = '') {
+    if (!blob) return blob;
+    const fmt = (format || '').toLowerCase();
+    const name = (title || blob.name || '').toLowerCase();
+    const type = (blob.type || '').toLowerCase();
+    // M4A normalization: must be 'audio/mp4' for MP4 containers
+    const isM4A = fmt === 'm4a' || name.endsWith('.m4a') || type === 'audio/m4a' || type === 'audio/x-m4a';
+    if (isM4A && type !== 'audio/mp4') {
+      try {
+        const normalized = new Blob([blob], { type: 'audio/mp4' });
+        if (blob.name) normalized.name = blob.name;
+        return normalized;
+      } catch (e) {
+        console.warn('Could not re-type blob to audio/mp4:', e);
+      }
+    }
+
+    // Raw ADTS AAC normalization: must be 'audio/aac' (not audio/mp4)
+    const isAAC = fmt === 'aac' || name.endsWith('.aac') || type === 'audio/x-aac' || type === 'audio/aacp';
+    if (isAAC && type !== 'audio/aac') {
+      try {
+        const normalized = new Blob([blob], { type: 'audio/aac' });
+        if (blob.name) normalized.name = blob.name;
+        return normalized;
+      } catch (e) {
+        console.warn('Could not re-type blob to audio/aac:', e);
+      }
+    }
+
+    // MP3 normalization: ensure 'audio/mpeg'
+    const isMP3 = fmt === 'mp3' || name.endsWith('.mp3');
+    if (isMP3 && type !== 'audio/mpeg') {
+      try {
+        const normalized = new Blob([blob], { type: 'audio/mpeg' });
+        if (blob.name) normalized.name = blob.name;
+        return normalized;
+      } catch (e) {}
+    }
+
+    return blob;
+  }
+
   async loadTrack(track) {
+    this.isChangingTrack = true;
     this.currentTrack = track;
 
     // Revoke previous blob URL to prevent memory leaks
@@ -177,18 +331,26 @@ class AudioEngine {
 
     let url = null;
 
-    // 1. If track already has an in-memory File or Blob, use it!
+    // 1. If track has an in-memory File or Blob, normalize MIME type and prioritize it!
+    // Native Chromium Blob URLs provide 100% reliable instant seeking past any timestamp (e.g. 2:10+), zero network drops, and never expire.
     if (track.fileBlob) {
-      this.currentBlobUrl = URL.createObjectURL(track.fileBlob);
+      const normalizedBlob = this.normalizeAudioBlob(track.fileBlob, track.format, track.title);
+      track.fileBlob = normalizedBlob;
+      this.currentBlobUrl = URL.createObjectURL(normalizedBlob);
       url = this.currentBlobUrl;
-    } 
-    // 2. If track has a URL (e.g. sample tracks), fetch into a Blob for local playback
+    }
+    // 2. Direct streaming for local Android SAF media via Range-supported /local-media endpoint
+    else if (track.url && track.url.includes('/local-media')) {
+      url = track.url;
+    }
+    // 3. If track has a URL (e.g. sample tracks), fetch into a Blob for local playback
     else if (track.url) {
       try {
         const blob = await this.fetchAudioBlob(track.url);
         if (blob) {
-          track.fileBlob = blob;
-          this.currentBlobUrl = URL.createObjectURL(blob);
+          const normalizedBlob = this.normalizeAudioBlob(blob, track.format, track.title);
+          track.fileBlob = normalizedBlob;
+          this.currentBlobUrl = URL.createObjectURL(normalizedBlob);
           url = this.currentBlobUrl;
           // Persist blob to IndexedDB
           if (window.auraDB && track.id) {
@@ -202,9 +364,17 @@ class AudioEngine {
     }
 
     if (!url) {
+      if (window.auraDiagnostics) {
+        window.auraDiagnostics.error('STREAM', `Failed to load track "${track.title}": No valid URL or Blob`);
+      }
       throw new Error('Track has no valid URL or Blob');
     }
 
+    if (window.auraDiagnostics) {
+      window.auraDiagnostics.info('STREAM', `Loading track "${track.title}" (${url.startsWith('blob:') ? 'In-Memory Blob URL' : 'Direct /local-media Stream'})`);
+    }
+
+    this.audio.crossOrigin = 'anonymous';
     this.audio.src = url;
     this.audio.load();
 
@@ -222,6 +392,9 @@ class AudioEngine {
         if (!settled) {
           settled = true;
           cleanUp();
+          if (window.auraDiagnostics) {
+            window.auraDiagnostics.info('STREAM', `Track metadata ready. Duration: ${this.audio.duration ? this.audio.duration.toFixed(1) : 0}s`);
+          }
           resolve(this.audio.duration || 0);
         }
       };
@@ -230,19 +403,91 @@ class AudioEngine {
         if (!settled) {
           settled = true;
           cleanUp();
-          console.warn('Audio element error during load:', e);
-          reject(new Error('Audio load error'));
+          const errCode = this.audio.error ? this.audio.error.code : 'unknown';
+          const errMsg = this.audio.error ? this.audio.error.message : '';
+          console.warn(`Audio element error during load (code ${errCode}: ${errMsg}):`, e);
+
+          // If track has a native contentUri or stream URL, attempt fallback to /local-media
+          if (track.contentUri && (!url || !url.includes('/local-media'))) {
+            console.log('Attempting native /local-media fallback for failed track:', track.title);
+            const encoded = encodeURIComponent(track.contentUri);
+            const extParam = (track.format || 'audio').toLowerCase();
+            track.url = `https://appassets.androidplatform.net/local-media?uri=${encoded}&ext=${extParam}`;
+            this.audio.src = track.url;
+            this.audio.load();
+            resolve(this.audio.duration || 0);
+            return;
+          }
+
+          // If track has a fileBlob and we are on Android native, attempt native MediaCodec transcoding
+          if (track.fileBlob && window.AndroidBridge && typeof window.AndroidBridge.transcodeBlobBase64 === 'function' && !track._transcoded) {
+            track._transcoded = true;
+            console.log('Attempting native MediaCodec transcode for blob:', track.title);
+            this.blobToBase64(track.fileBlob).then((base64) => {
+              const transcodedUrl = window.AndroidBridge.transcodeBlobBase64(base64, track.title || 'audio');
+              if (transcodedUrl) {
+                console.log('Transcoded successfully, loading:', transcodedUrl);
+                track.url = transcodedUrl;
+                this.audio.src = transcodedUrl;
+                this.audio.load();
+                resolve(this.audio.duration || 0);
+              } else {
+                reject(new Error(`Native transcode returned empty for: ${track.title}`));
+              }
+            }).catch((bErr) => {
+              reject(new Error(`Audio load error: code ${errCode} ${errMsg}`));
+            });
+            return;
+          }
+
+          // If direct URL streaming failed and we haven't tried blob fetching yet, fallback to blob fetch
+          if (track.url && !track.fileBlob && !url.startsWith('blob:')) {
+            console.log('Direct URL playback failed, attempting fallback to fetched blob...');
+            this.fetchAudioBlob(track.url).then((b) => {
+              const normalized = this.normalizeAudioBlob(b, track.format, track.title);
+              track.fileBlob = normalized;
+              this.currentBlobUrl = URL.createObjectURL(normalized);
+              this.audio.src = this.currentBlobUrl;
+              this.audio.load();
+              resolve(this.audio.duration || 0);
+            }).catch((err) => {
+              reject(new Error(`Audio load error: code ${errCode} ${errMsg}`));
+            });
+            return;
+          }
+
+          // If a cached blob failed and track has a URL, attempt re-fetching from URL
+          if (track.url && track.fileBlob && url.startsWith('blob:') && !track._retriedFromUrl) {
+            track._retriedFromUrl = true;
+            console.log('Cached blob playback failed, re-fetching fresh blob from track.url:', track.url);
+            this.fetchAudioBlob(track.url).then((b) => {
+              const normalized = this.normalizeAudioBlob(b, track.format, track.title);
+              track.fileBlob = normalized;
+              if (window.auraDB && track.id) {
+                auraDB.saveTrack(track).catch(() => {});
+              }
+              this.currentBlobUrl = URL.createObjectURL(normalized);
+              this.audio.src = this.currentBlobUrl;
+              this.audio.load();
+              resolve(this.audio.duration || 0);
+            }).catch((err) => {
+              reject(new Error(`Audio load error: code ${errCode} ${errMsg}`));
+            });
+            return;
+          }
+
+          reject(new Error(`Audio load error: code ${errCode} ${errMsg}`));
         }
       };
 
-      // Ensure promise always resolves within 2 seconds even if metadata event is delayed
+      // Ensure promise always resolves within 3 seconds even if metadata event is delayed
       const timeoutId = setTimeout(() => {
         if (!settled) {
           settled = true;
           cleanUp();
           resolve(this.audio.duration || 0);
         }
-      }, 2000);
+      }, 3000);
 
       this.audio.addEventListener('loadedmetadata', onLoaded);
       this.audio.addEventListener('canplay', onLoaded);
@@ -252,8 +497,16 @@ class AudioEngine {
 
   async play() {
     this.initWebAudio();
+    this.keepAudioContextAlive();
     await this.resumeContext();
-    return this.audio.play();
+    try {
+      return await this.audio.play();
+    } catch (err) {
+      console.warn('Playback play() attempt 1 failed, retrying after brief delay:', err);
+      await new Promise(r => setTimeout(r, 100));
+      await this.resumeContext();
+      return await this.audio.play();
+    }
   }
 
   pause() {
@@ -286,6 +539,15 @@ class AudioEngine {
     if (!isNaN(seconds) && isFinite(seconds)) {
       this.audio.currentTime = Math.max(0, Math.min(seconds, this.audio.duration || 0));
     }
+  }
+
+  skip(seconds) {
+    const current = this.audio.currentTime || 0;
+    const dur = this.audio.duration || 0;
+    const maxTime = (dur > 0) ? dur : (current + Math.max(0, seconds) + 3600);
+    const target = Math.max(0, Math.min(current + seconds, maxTime));
+    this.seek(target);
+    return target;
   }
 
   setVolume(vol) {
@@ -450,6 +712,15 @@ class AudioEngine {
 
       ctx.restore();
     }
+  }
+
+  blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   }
 }
 

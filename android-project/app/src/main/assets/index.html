@@ -9,7 +9,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,7 +27,7 @@
     <main class="mobile-shell" id="mobile-shell">
 
       <!-- App Header & Navigation Toolbar -->
-      <section class="app-header">
+      <section class="app-header" id="app-header">
         <div class="header-top-row">
           <div class="brand-wrapper">
             <div class="brand-icon-box">
@@ -49,7 +51,7 @@
         </div>
 
         <!-- Search Bar -->
-        <div class="search-container">
+        <div class="search-container" id="search-container">
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -59,7 +61,7 @@
         </div>
 
         <!-- Filter Chips Row -->
-        <div class="filter-chips-row">
+        <div class="filter-chips-row" id="filter-chips-row">
           <button class="filter-chip active" data-filter="all">All Tracks</button>
           <button class="filter-chip" data-filter="fav">Favorites ❤️</button>
           <button class="filter-chip" data-filter="recent">Recently Added</button>
@@ -315,20 +317,13 @@
             <span>Playing from Local Library</span>
             <h3>Now Playing</h3>
           </div>
-          <div class="sheet-top-actions">
-            <button class="sheet-nav-btn" id="btn-open-diagnostics" title="Audio Diagnostics & Engine Monitor" aria-label="Engine Diagnostics">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-              </svg>
-            </button>
-            <button class="sheet-nav-btn" id="btn-eq-shortcut" title="Equalizer">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
-                <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
-                <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
-              </svg>
-            </button>
-          </div>
+          <button class="sheet-nav-btn" id="btn-eq-shortcut" title="Equalizer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+              <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+            </svg>
+          </button>
         </div>
 
         <!-- Center Display: Vinyl Record + Canvas Visualizer -->
@@ -375,7 +370,6 @@
             <span id="time-current">0:00</span>
             <div class="scrub-quick-nudges">
               <button class="nudge-btn" id="nudge-back-10" title="Skip back 10 seconds" aria-label="Rewind 10 Seconds">⟲ 10s</button>
-              <button class="nudge-btn" id="nudge-fwd-10" title="Skip forward 10 seconds" aria-label="Forward 10 Seconds">10s ⟳</button>
             </div>
             <span id="time-total">0:00</span>
           </div>
@@ -456,11 +450,6 @@
           <button class="sec-action-btn" id="btn-timer" title="Sleep Timer">
             <svg viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
             <span>Timer</span>
-          </button>
-
-          <button class="sec-action-btn" id="btn-sec-diagnostics" title="Engine Diagnostics & Live Monitor">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            <span>Telemetry</span>
           </button>
 
           <button class="sec-action-btn" id="btn-info" title="Track ID3 Tags">
@@ -568,6 +557,19 @@
             <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
               <span style="color:#7b8fae;">Format & Storage</span>
               <strong style="color:var(--cyan-bright);"><span id="info-format">-</span> • <span id="info-size">-</span></strong>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#7b8fae;">Device File Location</span>
+                <button class="info-copy-btn" id="info-copy-path-btn" title="Copy file location to clipboard">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <div class="info-path-box" id="info-location">-</div>
             </div>
           </div>
         </div>
@@ -833,8 +835,12 @@
               </div>
               <div class="diag-metric-main" id="diag-battery-opt">UNRESTRICTED</div>
               <div class="diag-metric-footer">
-                WakeLock: <span id="diag-wakelock">HELD</span> | <span id="diag-visibility">VISIBLE</span>
-                <button class="diag-mini-fix-btn" id="diag-btn-fix-battery" style="display:none;">Whitelist Battery</button>
+                <div class="diag-footer-subgroup">
+                  <span class="diag-footer-item">WakeLock: <span class="diag-status-pill-small pill-green" id="diag-wakelock">HELD</span></span>
+                  <span class="diag-footer-divider">•</span>
+                  <span class="diag-footer-item">Screen: <span class="diag-status-pill-small pill-cyan" id="diag-visibility">VISIBLE</span></span>
+                </div>
+                <button class="diag-mini-fix-btn" id="diag-btn-fix-battery" onclick="if(window.auraApp &amp;&amp; window.auraApp.requestBatteryWhitelist){window.auraApp.requestBatteryWhitelist();}else if(window.AndroidBridge &amp;&amp; window.AndroidBridge.requestIgnoreBatteryOptimizations){window.AndroidBridge.requestIgnoreBatteryOptimizations();}" style="display:none;">Whitelist Battery</button>
               </div>
             </div>
           </div>
@@ -850,17 +856,11 @@
               <span>Save Diagnostic Report to File</span>
             </button>
             <div class="diag-actions-subrow">
-              <button class="diag-act-btn secondary" id="diag-crashlytics-test-btn" title="Send test event to Firebase Crashlytics">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
-                <span>Test Crashlytics</span>
-              </button>
               <button class="diag-act-btn secondary" id="diag-nudge-btn" title="Nudge audio engine if stuck">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                 </svg>
-                <span>Nudge</span>
+                <span>Nudge Playback</span>
               </button>
               <button class="diag-act-btn danger" id="diag-clear-logs-btn" title="Clear log history">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
